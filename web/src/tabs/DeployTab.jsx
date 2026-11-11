@@ -82,10 +82,15 @@ export default function DeployTab() {
                       <td>{d.id}</td>
                       <td>{rec?.name || d.recipe_id}</td>
                       <td>{d.params?.session?.gpu || d.gpu}</td>
-                      <td><b>{STATE_LABEL[d.state] || d.state}</b></td>
+                      <td><b>{STATE_LABEL[d.state] || d.state}</b>
+                        {d.params?.tunnel && <em> · 隧道:{d.params.tunnel.local_port}→:{d.params.tunnel.service_port}</em>}
+                      </td>
                       <td className="ops">
                         {!parked && d.state !== "ready" && <button onClick={() => act(api.cancelDeployment, d.id)}>取消</button>}
                         {parked && <button onClick={() => act(api.startDeployment, d.id)}>重跑</button>}
+                        {d.state === "ready" && (d.params?.tunnel
+                          ? <button onClick={() => act(api.tunnelStop, d.id)}>关隧道</button>
+                          : <button onClick={() => act(api.tunnelStart, d.id)}>开隧道</button>)}
                         {d.state === "ready" && <button onClick={() => act(api.releaseDeployment, d.id)}>释放</button>}
                         <button onClick={() => showLogs(d.id)}>日志</button>
                         <button onClick={() => {

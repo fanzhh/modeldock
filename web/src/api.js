@@ -48,6 +48,12 @@ export const api = {
   cancelDeployment: (id) => fetch(`/api/deployments/${id}/cancel`, { method: "POST" }).then(j),
   releaseDeployment: (id) => fetch(`/api/deployments/${id}/release`, { method: "POST" }).then(j),
   notebook: (id) => fetch(`/api/deployments/${id}/notebook`).then((r) => r.text()),
+  tunnelStart: (id, service_port) =>
+    fetch(`/api/deployments/${id}/tunnel/start`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ service_port: service_port || 0 }) }).then(j),
+  tunnelStop: (id) => fetch(`/api/deployments/${id}/tunnel/stop`, { method: "POST" }).then(j),
+  tunnelStatus: (id) => fetch(`/api/deployments/${id}/tunnel/status`).then(j),
 
   // chat
   thread: (id) => fetch(`/api/chat/threads/${id}`).then(j),

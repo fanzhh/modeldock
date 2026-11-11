@@ -2,7 +2,7 @@
 name = "modeldock-server"
 version = "0.1.0"
 description = "ModelDock server: Colab + Drive model depot and deployment orchestrator"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.32",
@@ -10,6 +10,8 @@ dependencies = [
     "sqlalchemy>=2.0",
     "httpx>=0.27",
     "cryptography>=43",
+    # Colab 会话通道随包提供：网页「登录 Colab/Open Tunnel」不需要用户预装 CLI
+    "google-colab-cli>=0.7",
 ]
 
 [dependency-groups]

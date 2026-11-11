@@ -12,6 +12,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import threading
 import time
 
@@ -96,12 +97,14 @@ class ColabAuthManager:
 
 
 def _find_colab() -> str:
+    """优先 server venv 内置 CLI（随包依赖安装），其次独立 uv tool 安装。"""
     for c in (os.environ.get("MODELDOCK_COLAB_BIN", ""),
+              os.path.join(sys.prefix, "bin", "colab"),
               os.path.expanduser("~/.local/bin/colab"),
               shutil.which("colab") or ""):
         if c and os.path.exists(c):
             return c
-    raise ColabAuthError("colab CLI 未安装：uv tool install google-colab-cli")
+    raise ColabAuthError("colab CLI 未找到：server venv 应随包携带（google-colab-cli）")
 
 
 _manager: ColabAuthManager | None = None

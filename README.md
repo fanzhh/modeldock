@@ -38,7 +38,7 @@
 # 1. 后端（默认监听 127.0.0.1:8820，数据目录 ~/.modeldock）
 cd server
 uv sync
-uv run pytest                 # 62 个测试
+uv run pytest                 # 67 个测试
 uv run python -m uvicorn app.main:app --port 8820
 
 # 2. 前端控制台（开发调试）
@@ -79,6 +79,11 @@ curl localhost:8820/api/health
 
 「登录 Colab」同样在总览页点按钮完成：网页展示授权链接 → 浏览器批准 →
 授权码粘回网页（凭证由 colab CLI 自管，授权码只在内存转交）。
+**colab CLI 随 server 依赖自带**（`google-colab-cli`），部署者无需单独安装。
+
+部署就绪后到「部署」页点**开隧道**：服务端自动生成 SSH 密钥与配置、
+经 `colab ssh --proxy-mode` 建立端口转发，并把本地 endpoint 自动登记——
+「Chat」页与任何 OpenAI 兼容客户端即可直接使用，全程无终端操作。
 
 以下为等价的 API 操作：
 
@@ -90,6 +95,12 @@ curl -X POST localhost:8820/api/accounts/drive/oauth/start \
   -H 'Content-Type: application/json' \
   -d '{"client_id":"xxx.apps.googleusercontent.com","client_secret":"GOCSPX-xxx"}'
 # 浏览器打开返回的 authorize_url 授权；回调自动完成
+
+curl -X POST localhost:8820/api/colab/auth/start    # Colab 登录：授权链接
+curl -X POST localhost:8820/api/colab/auth/submit -H 'Content-Type: application/json' \
+  -d '{"code":"4/0A…"}'
+curl -X POST localhost:8820/api/deployments/1/tunnel/start   # 一键隧道+端点登记
+curl localhost:8820/api/deployments/1/tunnel/status
 ```
 
 连好后检查健康与配额：
@@ -196,7 +207,7 @@ modeldock/
 │   │   ├── config.py       环境变量 MODELDOCK_*
 │   │   ├── db.py           SQLAlchemy 模型
 │   │   └── main.py         入口 + lifespan
-│   └── tests/              62 个单元/集成测试
+│   └── tests/              67 个单元/集成测试
 ├── web/                    Vite React 控制台骨架
 └── docker-compose.yml      本地编排（含 rclone 的 server 容器）
 ```

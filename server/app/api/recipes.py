@@ -129,6 +129,46 @@ def colab_usage():
     return get_orchestrator().backend.usage()
 
 
+# ---- SSH 隧道（网页一键开通，替代手动 ssh -L + 登记端点） ----
+
+class TunnelStartIn(BaseModel):
+    service_port: int = Field(default=0, ge=0, le=65535)
+
+
+@router.post("/deployments/{dep_id}/tunnel/start")
+def tunnel_start(dep_id: int, body: TunnelStartIn | None = None):
+    """一键开通：自动生成密钥/ssh 配置、起端口转发，并把 chat endpoint 登记。
+    之后 Chat 页（及任何 OpenAI 兼容客户端指向返回的 endpoint）即可直用。"""
+    from app.core.colab.tunnel import TunnelError, get_tunnel_manager
+    _get_dep(dep_id)  # 404 检查
+    try:
+        out = get_tunnel_manager().start(dep_id, body.service_port or None)
+    except TunnelError as e:
+        raise HTTPException(409, str(e)) from e
+    # endpoint 自动登记（幂等覆盖）
+    with Session(get_db_engine()) as s:
+        d = s.get(Deployment, dep_id)
+        params = dict(d.params or {})
+        params["chat_endpoint"] = out["endpoint"]
+        d.params = params
+        s.commit()
+    return {**out, "chat_endpoint": out["endpoint"]}
+
+
+@router.post("/deployments/{dep_id}/tunnel/stop")
+def tunnel_stop(dep_id: int):
+    from app.core.colab.tunnel import get_tunnel_manager
+    _get_dep(dep_id)
+    return get_tunnel_manager().stop(dep_id)
+
+
+@router.get("/deployments/{dep_id}/tunnel/status")
+def tunnel_status(dep_id: int):
+    from app.core.colab.tunnel import get_tunnel_manager
+    _get_dep(dep_id)
+    return get_tunnel_manager().status(dep_id)
+
+
 # ---- Colab 网页登录（无头 OAuth 转接；凭证由 colab CLI 自管） ----
 
 @router.post("/colab/auth/start")

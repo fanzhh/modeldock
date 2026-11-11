@@ -29,11 +29,15 @@ _TIMEOUT_DEFAULT = 120.0
 
 
 def _find_colab_bin() -> str:
+    """优先 server venv 内置 CLI（randomdep google-colab-cli），其次独立安装。"""
+    import sys
     for cand in (os.environ.get("MODELDOCK_COLAB_BIN", ""),
-                 os.path.expanduser("~/.local/bin/colab"), "colab"):
-        if cand and os.path.exists(cand) or cand == "colab":
+                 os.path.join(sys.prefix, "bin", "colab"),
+                 os.path.expanduser("~/.local/bin/colab"),
+                 "colab"):
+        if cand and (cand == "colab" or os.path.exists(cand)):
             return cand
-    raise ColabError("colab CLI not found; install with `uv tool install google-colab-cli`")
+    raise ColabError("colab CLI not found")
 
 
 class ColabCliBackend(ColabBackend):
