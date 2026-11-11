@@ -27,6 +27,18 @@ export const api = {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code }) }).then(j),
 
+  // generation (image/video via ComfyUI proxy)
+  genSubmit: (depId, body) => fetch(`/api/gen/deployments/${depId}/submit`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body) }).then(j),
+  genHistory: (depId, promptId, prompt) =>
+    fetch(`/api/gen/deployments/${depId}/history/${promptId}` +
+          (prompt ? `?prompt=${encodeURIComponent(prompt)}` : "")).then(j),
+  genAssets: (depId) => fetch(`/api/gen/deployments/${depId}/assets`).then(j),
+  genAssetFileUrl: (assetId) => `/api/gen/assets/${assetId}/file`,
+  genCheckpoints: (depId) => fetch(`/api/gen/deployments/${depId}/checkpoints`).then(j),
+  genDeleteAsset: (assetId) => fetch(`/api/gen/assets/${assetId}`, { method: "DELETE" }).then(j),
+
   // models
   families: () => fetch("/api/models/families").then(j),
   createFamily: (body) => fetch("/api/models/families", {

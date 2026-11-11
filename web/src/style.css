@@ -76,3 +76,13 @@ button.chip.on { color: var(--fg); border-color: var(--primary); }
 details summary { cursor: pointer; color: var(--primary); font-size: 13px; margin-bottom: 8px; }
 a { color: var(--primary); word-break: break-all; }
 section pre a, .block pre { margin: 6px 0; }
+textarea { font-family: inherit; }
+
+/* 生成 gallery */
+.gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.thumb { margin: 0; font-size: 11px; }
+.thumb img, .thumb video { width: 100%; border-radius: 8px; border: 1px solid var(--border);
+                           display: block; background: #0e1218; min-height: 60px; }
+.thumb figcaption { color: var(--muted); margin-top: 4px; overflow: hidden;
+                    text-overflow: ellipsis; white-space: nowrap; }
+button.mini { background: #3a2530; padding: 2px 8px; font-size: 11px; margin-left: 6px; }

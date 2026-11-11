@@ -38,7 +38,7 @@
 # 1. 后端（默认监听 127.0.0.1:8820，数据目录 ~/.modeldock）
 cd server
 uv sync
-uv run pytest                 # 70 个测试
+uv run pytest                 # 77 个测试
 uv run python -m uvicorn app.main:app --port 8820
 
 # 2. 前端控制台（开发调试）
@@ -194,6 +194,23 @@ curl localhost:8820/api/chat/threads/1                        # 回放历史
 导出 OpenAI 兼容端点给本机其它应用（Cherry Studio 等）：登记的 endpoint
 `http://127.0.0.1:18080/v1` 即可直接填入。
 
+## 生成：图片与视频（「生成」页签）
+
+部署 `builtin/comfyui` 并装配 checkpoint 家族（SD/SDXL/Flux safetensors 或
+GGUF 工作流模型），ready 后点「开隧道」，到「生成」页：
+
+- **文生图（开箱即用）**：选 checkpoint → 写提示词/负面/尺寸/步数/种子 →
+  生成。产物进 gallery，可回看/删除。
+- **生视频/进阶（工作流模式）**：在 ComfyUI 网页搭好 WAN 等工作流 →
+  「导出（API Format）」→ 粘贴到文本框，支持 `{{prompt}} {{negative}} {{ckpt}}
+  {{seed}} {{width}} {{height}} {{steps}}` 变量替换（裸写为 JSON 数值）。
+- 产物文件经 server 代理取回（`/api/gen/assets/{id}/file`），浏览器不直连
+  Colab；图用 `<img>`、视频用 `<video>` 直接播放。
+
+对应 API：`POST /api/gen/deployments/{id}/submit`（提交 workflow）、
+`GET …/history/{prompt_id}`（轮询，done 时入库）、`GET/DELETE …/assets`、
+`GET …/checkpoints`（ComfyUI object_info）。
+
 ## 目录
 
 ```
@@ -207,7 +224,7 @@ modeldock/
 │   │   ├── config.py       环境变量 MODELDOCK_*
 │   │   ├── db.py           SQLAlchemy 模型
 │   │   └── main.py         入口 + lifespan
-│   └── tests/              70 个单元/集成测试
+│   └── tests/              77 个单元/集成测试
 ├── web/                    Vite React 控制台骨架
 └── docker-compose.yml      本地编排（含 rclone 的 server 容器）
 ```

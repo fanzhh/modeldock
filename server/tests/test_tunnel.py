@@ -115,10 +115,10 @@ def test_tunnel_api_flow(tmp_path, monkeypatch):
         r = c.post(f"/api/deployments/{dep_id}/tunnel/start",
                    json={"service_port": 0}).json()
         assert r["local_port"] == 18080 + dep_id
-        assert r["chat_endpoint"] == f"http://127.0.0.1:{18080 + dep_id}"
-        # endpoint 已自动登记 → chat 页零手工
+        assert r["endpoint"] == f"http://127.0.0.1:{18080 + dep_id}"
+        # endpoint 已自动登记（chat/gen 页零手工）
         dep = c.get(f"/api/deployments/{dep_id}").json()
-        assert dep["params"]["chat_endpoint"] == r["chat_endpoint"]
+        assert dep["params"]["endpoint"] == r["endpoint"]
 
         st = c.get(f"/api/deployments/{dep_id}/tunnel/status").json()
         assert st["running"] is True and st["tunnel"]["service_port"] == 8080

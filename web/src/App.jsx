@@ -3,12 +3,14 @@ import OverviewTab from "./tabs/OverviewTab.jsx";
 import ModelsTab from "./tabs/ModelsTab.jsx";
 import DeployTab from "./tabs/DeployTab.jsx";
 import ChatTab from "./tabs/ChatTab.jsx";
+import GenTab from "./tabs/GenTab.jsx";
 
 const TABS = [
   ["overview", "总览"],
   ["models", "模型仓库"],
   ["deploy", "部署"],
   ["chat", "Chat"],
+  ["gen", "生成"],
 ];
 
 export default function App() {
@@ -20,7 +22,7 @@ export default function App() {
         <h1>
           ModelDock <small>控制台</small>
         </h1>
-        <p className="sub">Colab 按需 GPU 工作台 · 模型囤云盘 · 凭证不出本机</p>
+        <p className="sub">Colab 按需 GPU 工作台 · 聊天/图片/视频生成 · 凭证不出本机</p>
         <nav className="tabs">
           {TABS.map(([id, label]) => (
             <button key={id} className={tab === id ? "tab on" : "tab"}
@@ -33,6 +35,7 @@ export default function App() {
       {tab === "models" && <ModelsTab />}
       {tab === "deploy" && <DeployTab />}
       {tab === "chat" && <ChatTab />}
+      {tab === "gen" && <GenTab />}
     </main>
   );
 }

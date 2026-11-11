@@ -12,6 +12,7 @@ from fastapi import FastAPI
 
 from app.api import accounts as accounts_api
 from app.api import chat as chat_api
+from app.api import gen as gen_api
 from app.api import models_api, recipes
 from app.config import settings
 from app.core.builtin_recipes import seed_builtin_recipes
@@ -51,6 +52,7 @@ app.include_router(accounts_api.router)
 app.include_router(models_api.router)
 app.include_router(recipes.router)
 app.include_router(chat_api.router)
+app.include_router(gen_api.router)
 
 # ---- web 控制台静态托管（npm run build 后无需另起 dev server）----
 from fastapi.staticfiles import StaticFiles  # noqa: E402

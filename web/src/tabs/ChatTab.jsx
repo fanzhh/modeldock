@@ -26,7 +26,9 @@ export default function ChatTab() {
   // 部署参数里已有端点（开隧道时自动登记）→ 直接用它，无需手动填
   useEffect(() => {
     const dep = ready.find((d) => String(d.id) === String(depId));
-    if (dep?.params?.chat_endpoint) setEndpoint(dep.params.chat_endpoint);
+    if (dep?.params?.endpoint || dep?.params?.chat_endpoint) {
+      setEndpoint(dep.params.endpoint || dep.params.chat_endpoint);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [depId]);
 

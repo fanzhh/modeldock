@@ -142,6 +142,22 @@ class ChatMessage(Base):
     thread: Mapped[ChatThread] = relationship(back_populates="messages")
 
 
+class GeneratedAsset(Base):
+    """生成产物记录（图/视频）。文件本体在 Colab VM 的 outputs 里，
+    经 ComfyUI /view 按需取回；这里存引用与生成参数。"""
+
+    __tablename__ = "generated_assets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    deployment_id: Mapped[int] = mapped_column(ForeignKey("deployments.id"))
+    kind: Mapped[str] = mapped_column(String(16), default="image")  # image/video
+    filename: Mapped[str] = mapped_column(String(255))
+    subfolder: Mapped[str] = mapped_column(String(255), default="")
+    prompt: Mapped[str] = mapped_column(Text, default="")
+    meta: Mapped[dict] = mapped_column(JSON, default=dict)  # 模板/参数/history 状态
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 _engine = None
 
 

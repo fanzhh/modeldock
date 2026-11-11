@@ -145,14 +145,15 @@ def tunnel_start(dep_id: int, body: TunnelStartIn | None = None):
         out = get_tunnel_manager().start(dep_id, body.service_port or None)
     except TunnelError as e:
         raise HTTPException(409, str(e)) from e
-    # endpoint 自动登记（幂等覆盖）
+    # endpoint 自动登记（幂等覆盖；聊天/生成共用）
     with Session(get_db_engine()) as s:
         d = s.get(Deployment, dep_id)
         params = dict(d.params or {})
-        params["chat_endpoint"] = out["endpoint"]
+        params["endpoint"] = out["endpoint"]
+        params.pop("chat_endpoint", None)
         d.params = params
         s.commit()
-    return {**out, "chat_endpoint": out["endpoint"]}
+    return {**out, "endpoint": out["endpoint"]}
 
 
 @router.post("/deployments/{dep_id}/tunnel/stop")

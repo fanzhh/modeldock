@@ -79,15 +79,17 @@ def delete_thread(thread_id: int):
 
 @router.patch("/deployments/{dep_id}/endpoint")
 def set_endpoint(dep_id: int, body: ChatEndpointIn):
+    """登记本地转发端点（聊天/生成统一键 endpoint；开隧道时自动登记）。"""
     with Session(get_db_engine()) as s:
         d = s.get(Deployment, dep_id)
         if not d:
             raise HTTPException(404, "deployment not found")
         params = dict(d.params or {})
-        params["chat_endpoint"] = body.endpoint.rstrip("/")
+        params["endpoint"] = body.endpoint.rstrip("/")
+        params.pop("chat_endpoint", None)  # 旧键迁移
         d.params = params
         s.commit()
-    return {"ok": True, "deployment_id": dep_id, "endpoint": params["chat_endpoint"]}
+    return {"ok": True, "deployment_id": dep_id, "endpoint": params["endpoint"]}
 
 
 # ---- 发消息 ----
@@ -97,11 +99,12 @@ def _endpoint_for(dep_id: int) -> str:
         d = s.get(Deployment, dep_id)
         if not d:
             raise HTTPException(404, "deployment not found")
-        endpoint = (d.params or {}).get("chat_endpoint")
+        params = d.params or {}
+        endpoint = params.get("endpoint") or params.get("chat_endpoint")
     if not endpoint:
-        raise HTTPException(409, f"chat endpoint not set for deployment {dep_id}; "
-                                 "establish tunnel then PATCH "
-                                 f"/api/chat/deployments/{dep_id}/endpoint")
+        raise HTTPException(409, f"endpoint not set for deployment {dep_id}; "
+                                 "establish tunnel then POST "
+                                 f"/api/deployments/{dep_id}/tunnel/start")
     return endpoint
 
 
