@@ -10,8 +10,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api import accounts as accounts_api
+from app.api import chat as chat_api
 from app.api import models_api, recipes
 from app.config import settings
+from app.core.builtin_recipes import seed_builtin_recipes
 from app.core.drive import Drive
 from app.core.downloads import engine as dl_engine_mod
 from app.core.downloads.engine import DownloadEngine
@@ -26,6 +28,7 @@ drive = Drive()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    seed_builtin_recipes()
     engine_dl = DownloadEngine(vault_getter=accounts_api.token_for, drive=drive)
     dl_engine_mod.engine_singleton = engine_dl  # 供 API 路由按需取用
     await engine_dl.start()
@@ -40,6 +43,7 @@ app = FastAPI(title="ModelDock", version="0.1.0", lifespan=lifespan)
 app.include_router(accounts_api.router)
 app.include_router(models_api.router)
 app.include_router(recipes.router)
+app.include_router(chat_api.router)
 
 
 @app.get("/api/health", response_model=HealthOut)

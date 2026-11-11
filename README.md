@@ -6,7 +6,7 @@
 
 > 设计文档：[DESIGN.md](./DESIGN.md) · 界面原型：[design/prototype.html](./design/prototype.html)
 
-## 当前状态（M2：Colab 编排完成）
+## 当前状态（M3：内置配方 + Chat 完成）
 
 - ✅ 设计稿 + 高保真可交互原型（5 页面 + Chat）
 - ✅ `server/`：FastAPI + SQLite 元数据层
@@ -17,9 +17,13 @@
   - Colab 编排：backend 抽象（mock / google-colab-cli）、
     provision→install→sync→boot→ready 状态机、GPU 降级链、
     临时 rclone 凭证随会话销毁、notebook 手动兜底、compute units 余额
-  - API：accounts / models(families,tasks) / recipes / deployments(start/cancel/release/logs/notebook)
+  - 内置配方：`builtin/llamacpp-chat`（llama.cpp GGUF 聊天）+ `builtin/comfyui`；
+    `$family` 模板由 deployment params 解析
+  - Chat：线程/历史本地保存、OpenAI 兼容转发（非流式 + SSE 流式透传）、
+    history_limit 截断、端点登记
+  - API：accounts / models / recipes / deployments / chat
 - ✅ `web/`：Vite React 开发控制台（拉取 health / 凭证 / 家族 / 任务）
-- 🚧 内置配方（llama.cpp / ComfyUI 预置）、Chat 面板、配方便签化
+- 🚧 自动释放策略（空闲超时）、余额快照、模型家族管理 UI
 
 ## 快速开始
 
@@ -30,7 +34,7 @@
 # 1. 后端（默认监听 127.0.0.1:8820，数据目录 ~/.modeldock）
 cd server
 uv sync
-uv run pytest                 # 39 个测试
+uv run pytest                 # 48 个测试
 uv run python -m uvicorn app.main:app --port 8820
 
 # 2. 前端开发台（另开终端；代理 /api → 127.0.0.1:8820）
@@ -132,6 +136,48 @@ Drive 拉取（不走 drive.mount）；临时 rclone 配置只写 `/content/.sec
 curl localhost:8820/api/deployments/1/notebook
 ```
 
+## M3：内置配方 + Chat
+
+启动时自动 seed 两个内置配方（改过不会被覆盖）：
+
+| 配方 | 用途 | 说明 |
+|---|---|---|
+| `builtin/llamacpp-chat` | 聊天 | llama.cpp llama-server（CUDA 构建），任意 GGUF；OpenAI 兼容 `/v1` |
+| `builtin/comfyui` | 图像/视频 | ComfyUI + GGUF/视频节点，Web UI 8188 |
+
+内置配方的模型角色是模板（`"$chat"`、`"$checkpoint"`），部署创建时由
+`params.families` 提供真实家族名：
+
+```bash
+# 用内置聊天配方部署 Qwen3-8B GGUF（families.chat → 已入库家族名）
+curl -X POST localhost:8820/api/deployments -H 'Content-Type: application/json' -d '{
+  "recipe_id": 1, "gpu": "T4",
+  "params": {"families": {"chat": "Qwen3-8B"}}}'
+curl -X POST localhost:8820/api/deployments/1/start
+```
+
+**Chat 面板（API）**：部署 ready 后，把 Colab 端口（SSH 隧道 `colab ssh`，
+或能直连的 URL）映射成本地地址登记，然后开线程对话：
+
+```bash
+# 登记本地转发端点（llama-server 在 Colab :8080 → 本机 127.0.0.1:18080）
+curl -X PATCH localhost:8820/api/chat/deployments/1/endpoint \
+  -H 'Content-Type: application/json' -d '{"endpoint":"http://127.0.0.1:18080"}'
+
+# 开线程 + 对话（历史、system prompt、temperature/top_p/max_tokens 由 thread.params 控制）
+curl -X POST localhost:8820/api/chat/deployments/1/threads \
+  -H 'Content-Type: application/json' \
+  -d '{"deployment_id":1,"params":{"system_prompt":"You are terse.","temperature":0.5}}'
+curl -X POST localhost:8820/api/chat/threads/1/messages \
+  -H 'Content-Type: application/json' -d '{"message":"你好"}'
+curl -X POST localhost:8820/api/chat/threads/1/messages/stream \
+  -H 'Content-Type: application/json' -d '{"message":"继续"}'   # SSE 流式
+curl localhost:8820/api/chat/threads/1                        # 回放历史
+```
+
+导出 OpenAI 兼容端点给本机其它应用（Cherry Studio 等）：登记的 endpoint
+`http://127.0.0.1:18080/v1` 即可直接填入。
+
 ## 目录
 
 ```
@@ -145,7 +191,7 @@ modeldock/
 │   │   ├── config.py       环境变量 MODELDOCK_*
 │   │   ├── db.py           SQLAlchemy 模型
 │   │   └── main.py         入口 + lifespan
-│   └── tests/              39 个单元/集成测试
+│   └── tests/              48 个单元/集成测试
 ├── web/                    Vite React 控制台骨架
 └── docker-compose.yml      本地编排（含 rclone 的 server 容器）
 ```
@@ -167,7 +213,7 @@ modeldock/
 
 - [x] M1：Google Drive 接入（状态探测 / 已有 remote 一键导入 / OAuth 向导，托管 remote `gdrive`）
 - [x] M2：Colab 会话编排（create→install→sync→run→health→release + GPU 降级 + notebook 兜底）
-- [ ] M3：内置配方（ComfyUI H3 / llama.cpp chat）+ Chat 面板
+- [x] M3：内置配方（llama.cpp chat / ComfyUI）+ Chat 历史/流式 API + $family 模板
 - [ ] M4：余额快照、自动释放策略、模型家族管理 UI
 
 ## 安全原则

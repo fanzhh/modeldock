@@ -109,12 +109,23 @@ class Orchestrator:
             r = s.get(Recipe, d.recipe_id)
             return r, d
 
-    def _model_files(self, manifest: dict) -> list[tuple[str, str, int]]:
-        """manifest.models 中每个 role 的 (family, file_remote_rel, bytes)。"""
+    def _model_files(self, manifest: dict, params: dict | None = None) -> list[tuple[str, str, int]]:
+        """manifest.models 中每个 role 的 (family, file_remote_rel, bytes)。
+
+        family 模板："$<key>" → Deployment.params.families[key]（内置配方用）。
+        """
+        families = (params or {}).get("families") or {}
         out: list[tuple[str, str, int]] = []
         with Session(get_db_engine()) as s:
             for role, spec in (manifest.get("models") or {}).items():
-                fam_name = spec.get("family")
+                fam_name = spec.get("family", "")
+                if fam_name.startswith("$"):
+                    key = fam_name[1:]
+                    fam_name = families.get(key)
+                    if not fam_name:
+                        raise ColabError(
+                            f"family template '{spec.get('family')}' not resolved: "
+                            f"pass params.families.{key} when creating the deployment")
                 fam = s.scalars(select(ModelFamily).where(ModelFamily.name == fam_name)).first()
                 if not fam:
                     raise ColabError(f"model family '{fam_name}' not found in repo (role {role})")
@@ -122,7 +133,7 @@ class Orchestrator:
                 if not files:
                     raise ColabError(f"family '{fam_name}' has no model files registered")
                 for mf in files:
-                    out.append((fam_name, mf.remote_path, mf.bytes or 0))
+                    out.append((fam.name, mf.remote_path, mf.bytes or 0))
         return out
 
     def _dump_rclone_conf(self) -> str:
@@ -146,7 +157,7 @@ class Orchestrator:
         try:
             recipe, dep = self._recipe(dep_id)
             manifest = recipe.manifest or {}
-            models = self._model_files(manifest)  # 预检，缺模型直接失败
+            models = self._model_files(manifest, dep.params or {})  # 预检，缺模型直接失败
             if models and not self.drive.has_remote():
                 raise ColabError(
                     "drive remote not registered; run accounts drive import/oauth first")

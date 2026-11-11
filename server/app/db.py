@@ -112,6 +112,36 @@ class SecretRef(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class ChatThread(Base):
+    """一次对话线程：绑定部署（即绑定一个已就绪的 chat 服务）。"""
+
+    __tablename__ = "chat_threads"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    deployment_id: Mapped[int] = mapped_column(ForeignKey("deployments.id"))
+    title: Mapped[str] = mapped_column(String(255), default="New chat")
+    params: Mapped[dict] = mapped_column(JSON, default=dict)  # temperature/top_p/system_prompt…
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    messages: Mapped[list["ChatMessage"]] = relationship(back_populates="thread",
+                                                         cascade="all, delete-orphan",
+                                                          order_by="ChatMessage.id")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    thread_id: Mapped[int] = mapped_column(ForeignKey("chat_threads.id"))
+    role: Mapped[str] = mapped_column(String(16))  # user/assistant/system
+    content: Mapped[str] = mapped_column(Text, default="")
+    meta: Mapped[dict] = mapped_column(JSON, default=dict)  # usage/模型信息等
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    thread: Mapped[ChatThread] = relationship(back_populates="messages")
+
+
 _engine = None
 
 

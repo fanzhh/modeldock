@@ -114,3 +114,45 @@ class DeploymentOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ---- chat ----
+class ChatThreadIn(BaseModel):
+    deployment_id: int
+    title: str = Field(default="New chat", max_length=255)
+    params: dict = Field(default_factory=dict)  # system_prompt/temperature/top_p/max_tokens/history_limit
+
+
+class ChatThreadOut(BaseModel):
+    id: int
+    deployment_id: int
+    title: str
+    params: dict
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ChatThreadDetail(ChatThreadOut):
+    messages: list["ChatMessageOut"]
+
+
+class ChatMessageIn(BaseModel):
+    message: str = Field(min_length=1, max_length=65536)
+    params: dict = Field(default_factory=dict)  # 一次性覆盖（不写回 thread）
+
+
+class ChatMessageOut(BaseModel):
+    id: int
+    thread_id: int
+    role: str
+    content: str
+    meta: dict
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ChatEndpointIn(BaseModel):
+    endpoint: str = Field(pattern="^https?://", max_length=1024)
