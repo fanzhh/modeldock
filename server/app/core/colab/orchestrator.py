@@ -163,7 +163,10 @@ class Orchestrator:
                     "drive remote not registered; run accounts drive import/oauth first")
             gpu = dep.gpu or "T4"
 
-            # 1. provision（带降级链）
+            # 1. provision（带降级链）；启动前抓余额快照（DESIGN.md §4.5）
+            usage_before = await asyncio.to_thread(self.backend.usage)
+            if usage_before:
+                self._set_params(dep_id, usage_before=usage_before)
             self._set_state(dep_id, "provision", logs_append="[provision] creating session…\n")
             session = await self._provision(st, gpu)
             self._set_params(dep_id, session={"id": session.session_id, "gpu": session.gpu})
@@ -306,6 +309,10 @@ class Orchestrator:
             except Exception as e:  # noqa: BLE001
                 self._append_log(dep_id, f"[releasing] secret cleanup warn: {e}\n")
             await asyncio.to_thread(self.backend.stop_session, session)
+        # 释放后余额快照（会话时长×GPU≈points 消耗估算依据）
+        usage_after = await asyncio.to_thread(self.backend.usage)
+        if usage_after:
+            self._set_params(dep_id, usage_after=usage_after)
         self._set_state(dep_id, "done", logs_append="[done] session released\n")
         return "done"
 

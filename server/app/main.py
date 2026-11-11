@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 
@@ -14,6 +15,8 @@ from app.api import chat as chat_api
 from app.api import models_api, recipes
 from app.config import settings
 from app.core.builtin_recipes import seed_builtin_recipes
+from app.core.colab.autoreleaser import AutoReleaser
+from app.core.colab.orchestrator import get_orchestrator
 from app.core.drive import Drive
 from app.core.downloads import engine as dl_engine_mod
 from app.core.downloads.engine import DownloadEngine
@@ -33,8 +36,12 @@ async def lifespan(app: FastAPI):
     dl_engine_mod.engine_singleton = engine_dl  # 供 API 路由按需取用
     await engine_dl.start()
     app.state.download_engine = engine_dl
+    autoreleaser = AutoReleaser(get_orchestrator().release, interval=30.0)
+    await autoreleaser.start()
+    app.state.autoreleaser = autoreleaser
     log.info("ModelDock ready at %s:%s (db=%s)", settings.host, settings.port, settings.db_path)
     yield
+    await autoreleaser.stop()
     await engine_dl.stop()
 
 
@@ -44,6 +51,18 @@ app.include_router(accounts_api.router)
 app.include_router(models_api.router)
 app.include_router(recipes.router)
 app.include_router(chat_api.router)
+
+# ---- web 控制台静态托管（npm run build 后无需另起 dev server）----
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+from starlette.responses import FileResponse  # noqa: E402
+
+_dist = Path(__file__).resolve().parents[2] / "web" / "dist"
+if _dist.is_dir():
+    app.mount("/assets", StaticFiles(directory=_dist / "assets"), name="assets")
+
+    @app.get("/", include_in_schema=False)
+    def index():
+        return FileResponse(_dist / "index.html")
 
 
 @app.get("/api/health", response_model=HealthOut)

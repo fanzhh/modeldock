@@ -111,6 +111,7 @@ class DeploymentOut(BaseModel):
     recipe_id: int
     gpu: str
     state: str
+    params: dict = Field(default_factory=dict)
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

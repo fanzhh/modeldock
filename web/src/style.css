@@ -32,3 +32,42 @@ pre {
   margin: 0; font-size: 12px; background: #0e1218; border-radius: 8px;
   padding: 10px; overflow: auto; color: var(--muted);
 }
+
+/* M4 控制台 */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.tabs { display: flex; gap: 6px; margin-top: 14px; }
+.tab {
+  background: var(--card); color: var(--muted); border: 1px solid var(--border);
+  padding: 7px 14px; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 13px;
+}
+.tab.on { color: var(--fg); border-bottom-color: transparent; background: #1a2030; }
+.hidden { display: none; }
+
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.grid { display: flex; flex-direction: column; gap: 8px; }
+input, select, textarea {
+  background: #0e1218; color: var(--fg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 13px; flex: 1; min-width: 0;
+}
+button {
+  background: var(--primary); color: #fff; border: 0; border-radius: 8px;
+  padding: 8px 14px; font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.chip { background: var(--card); border: 1px solid var(--border); color: var(--muted); }
+button.chip.on { color: var(--fg); border-color: var(--primary); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th, .tbl td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.tbl th { color: var(--muted); font-weight: 500; }
+.ops { display: flex; gap: 6px; flex-wrap: wrap; }
+.ops button { padding: 4px 10px; font-size: 12px; background: #2a3350; }
+
+.logbox, .chatlog {
+  display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow: auto;
+}
+.msg { padding: 9px 12px; border-radius: 10px; font-size: 14px; line-height: 1.55;
+       white-space: pre-wrap; word-break: break-word; }
+.msg.user { background: #223354; align-self: flex-end; max-width: 85%; }
+.msg.bot { background: #1a2030; align-self: flex-start; max-width: 85%; }

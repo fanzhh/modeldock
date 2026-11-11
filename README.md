@@ -6,7 +6,7 @@
 
 > 设计文档：[DESIGN.md](./DESIGN.md) · 界面原型：[design/prototype.html](./design/prototype.html)
 
-## 当前状态（M3：内置配方 + Chat 完成）
+## 当前状态（M4：控制台 + 生命周期治理完成）
 
 - ✅ 设计稿 + 高保真可交互原型（5 页面 + Chat）
 - ✅ `server/`：FastAPI + SQLite 元数据层
@@ -21,9 +21,13 @@
     `$family` 模板由 deployment params 解析
   - Chat：线程/历史本地保存、OpenAI 兼容转发（非流式 + SSE 流式透传）、
     history_limit 截断、端点登记
-  - API：accounts / models / recipes / deployments / chat
-- ✅ `web/`：Vite React 开发控制台（拉取 health / 凭证 / 家族 / 任务）
-- 🚧 自动释放策略（空闲超时）、余额快照、模型家族管理 UI
+  - 余额快照：启动/释放各抓一次 usage → params.usage_before/after；
+    空闲自动释放（Chat 活动或 ready 时间为基准，超时自动 release）
+  - API：accounts / models / recipes / deployments / chat / colab-usage
+- ✅ `web/`：React 控制台（总览 / 模型仓库 / 部署 / Chat 四页签，
+  token/家族/任务录入、部署状态与日志/释放/兜底导出、SSE 流式对话）；
+  `npm run build` 后由 server 一体化托管
+- 🚧 vLLM 配方、多 GPU 预检、配方便签化
 
 ## 快速开始
 
@@ -34,13 +38,16 @@
 # 1. 后端（默认监听 127.0.0.1:8820，数据目录 ~/.modeldock）
 cd server
 uv sync
-uv run pytest                 # 48 个测试
+uv run pytest                 # 54 个测试
 uv run python -m uvicorn app.main:app --port 8820
 
-# 2. 前端开发台（另开终端；代理 /api → 127.0.0.1:8820）
+# 2. 前端控制台（开发调试）
 cd web
 npm install
-npm run dev                   # http://127.0.0.1:5173
+npm run dev                   # http://127.0.0.1:5173（代理 /api）
+
+# 生产形态：构建后由 server 直接托管，单进程一体化
+cd web && npm run build       # 产物 web/dist → uvicorn 启动后直接开 http://127.0.0.1:8820/
 ```
 
 ### 试一下 API
@@ -191,7 +198,7 @@ modeldock/
 │   │   ├── config.py       环境变量 MODELDOCK_*
 │   │   ├── db.py           SQLAlchemy 模型
 │   │   └── main.py         入口 + lifespan
-│   └── tests/              48 个单元/集成测试
+│   └── tests/              54 个单元/集成测试
 ├── web/                    Vite React 控制台骨架
 └── docker-compose.yml      本地编排（含 rclone 的 server 容器）
 ```
@@ -208,13 +215,15 @@ modeldock/
 
 | `MODELDOCK_COLAB_BACKEND` | `mock` | Colab 后端：`mock`（dry-run）/ `cli`（真实会话） |
 | `MODELDOCK_COLAB_BIN` | `~/.local/bin/colab` | colab CLI 路径（cli 后端） |
+| `MODELDOCK_IDLE_TIMEOUT_MIN` | `0` | 全局空闲自动释放阈值（分钟，部署 params.idle_timeout_min 优先；0=关闭） |
 
 ## 路线图（对应 DESIGN.md §8）
 
 - [x] M1：Google Drive 接入（状态探测 / 已有 remote 一键导入 / OAuth 向导，托管 remote `gdrive`）
 - [x] M2：Colab 会话编排（create→install→sync→run→health→release + GPU 降级 + notebook 兜底）
 - [x] M3：内置配方（llama.cpp chat / ComfyUI）+ Chat 历史/流式 API + $family 模板
-- [ ] M4：余额快照、自动释放策略、模型家族管理 UI
+- [x] M4：余额快照（usage before/after）、空闲自动释放、Web 控制台（总览/模型/部署/Chat 四页签，SSE 流式）
+- [ ] v0.2+：vLLM 配方、多 GPU 预检、模型家族管理增强、配方便签化
 
 ## 安全原则
 

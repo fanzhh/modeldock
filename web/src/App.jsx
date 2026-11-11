@@ -1,80 +1,59 @@
 import { useEffect, useState } from "react";
+import OverviewTab from "./tabs/OverviewTab.jsx";
+import ModelsTab from "./tabs/ModelsTab.jsx";
+import DeployTab from "./tabs/DeployTab.jsx";
+import ChatTab from "./tabs/ChatTab.jsx";
 
-const api = {
-  health: () => fetch("/api/health").then((r) => r.json()),
-  secrets: () => fetch("/api/accounts/secrets").then((r) => r.json()),
-  families: () => fetch("/api/models/families").then((r) => r.json()),
-  tasks: () => fetch("/api/models/tasks").then((r) => r.json()),
-};
+const TABS = [
+  ["overview", "总览"],
+  ["models", "模型仓库"],
+  ["deploy", "部署"],
+  ["chat", "Chat"],
+];
 
 export default function App() {
-  const [health, setHealth] = useState(null);
-  const [secrets, setSecrets] = useState([]);
-  const [families, setFamilies] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [err, setErr] = useState("");
-
-  const refresh = async () => {
-    try {
-      setErr("");
-      const [h, s, f, t] = await Promise.all([
-        api.health(), api.secrets(), api.families(), api.tasks(),
-      ]);
-      setHealth(h); setSecrets(s); setFamilies(f); setTasks(t);
-    } catch (e) {
-      setErr(`无法连接 server（先启动: cd server && uv run python -m uvicorn app.main:app --port 8820）: ${e}`);
-    }
-  };
-
-  useEffect(() => { refresh(); const id = setInterval(refresh, 3000); return () => clearInterval(id); }, []);
+  const [tab, setTab] = useState("overview");
 
   return (
     <main className="wrap">
       <header>
-        <h1>ModelDock <small>dev console</small></h1>
-        <p className="sub">M0 骨架盘 · 完整原型见 ../design/prototype.html</p>
+        <h1>
+          ModelDock <small>控制台</small>
+        </h1>
+        <p className="sub">Colab 按需 GPU 工作台 · 模型囤云盘 · 凭证不出本机</p>
+        <nav className="tabs">
+          {TABS.map(([id, label]) => (
+            <button key={id} className={tab === id ? "tab on" : "tab"}
+                    onClick={() => setTab(id)}>{label}</button>
+          ))}
+        </nav>
       </header>
-      {err && <p className="err">{err}</p>}
 
-      <section>
-        <h2>服务</h2>
-        <pre>{JSON.stringify(health, null, 2)}</pre>
-      </section>
-
-      <section>
-        <h2>凭证（只显示指纹元数据）</h2>
-        <ul>
-          {secrets.length === 0 && <li className="dim">未配置。PUT /api/accounts/secrets</li>}
-          {secrets.map((s) => (
-            <li key={s.id}>
-              <b>{s.scope}</b> / {s.name} · fp {s.fingerprint}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section>
-        <h2>模型家族</h2>
-        <ul>
-          {families.length === 0 && <li className="dim">还没有模型。POST /api/models/families</li>}
-          {families.map((f) => (
-            <li key={f.id}><b>{f.name}</b> · {f.purpose}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section>
-        <h2>下载任务</h2>
-        <ul>
-          {tasks.length === 0 && <li className="dim">队列为空</li>}
-          {tasks.map((t) => (
-            <li key={t.id}>
-              #{t.id} [{t.source}] {t.filename || t.repo} → {t.status}
-              {t.total_bytes > 0 && <em> {Math.round((t.done_bytes / t.total_bytes) * 100)}%</em>}
-            </li>
-          ))}
-        </ul>
-      </section>
+      {tab === "overview" && <OverviewTab />}
+      {tab === "models" && <ModelsTab />}
+      {tab === "deploy" && <DeployTab />}
+      {tab === "chat" && <ChatTab />}
     </main>
   );
+}
+
+/** 通用轮询 hook */
+export function usePoll(fn, deps, ms = 3000) {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    const run = async () => {
+      try {
+        const v = await fn();
+        if (alive) setData({ ok: true, v });
+      } catch (e) {
+        if (alive) setData({ ok: false, e: String(e.message || e) });
+      }
+    };
+    run();
+    const id = setInterval(run, ms);
+    return () => { alive = false; clearInterval(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+  return data;
 }

@@ -48,5 +48,11 @@ class Settings:
     def max_parallel_downloads(self) -> int:
         return int(_env("max_parallel_downloads", "2"))
 
+    @property
+    def idle_timeout_min(self) -> float:
+        """自动释放：ready 部署空闲 N 分钟后释放（部署 params.idle_timeout_min 优先；
+        0 = 关闭）。"""
+        return float(_env("idle_timeout_min", "0"))
+
 
 settings = Settings()
