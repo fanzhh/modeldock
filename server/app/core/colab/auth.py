@@ -28,6 +28,7 @@ class ColabAuthSession:
         self.proc = proc
         self.output = ""
         self.url: str | None = None
+        self.created_at = time.time()
         self.finished_output: str | None = None  # 无 URL 直接结束（已登录）
         self._stop = threading.Event()
 
@@ -42,8 +43,12 @@ class ColabAuthSession:
             self.finished_output = f"rc={rc}\n{self.output}"
 
 
+# 悬挂会话没有超时回收会让后续登录全部 422（真实缺陷：用户点开授权不完成）
+SESSION_TIMEOUT_S = 600
+
+
 class ColabAuthManager:
-    """模块内单例；同一时间只允许一次登录会话。"""
+    """模块内单例；同一时间只允许一次登录会话（旧会话超时/退出自动回收）。"""
 
     def __init__(self, colab_bin: str | None = None) -> None:
         self.bin = colab_bin or _find_colab()
@@ -54,11 +59,34 @@ class ColabAuthManager:
     def session(self) -> ColabAuthSession | None:
         return self._session
 
+    def _reap_locked(self) -> None:
+        """清掉不可用的旧会话：已退出 / 超时。调用方需持锁。"""
+        s = self._session
+        if s is None:
+            return
+        if s.proc.poll() is not None:
+            self._session = None
+            return
+        if time.time() - s.created_at > SESSION_TIMEOUT_S:
+            s.proc.kill()
+            self._session = None
+
+    def cancel(self) -> dict:
+        """放弃当前登录会话（网页「重新开始」用）。"""
+        with self._lock:
+            s = self._session
+            self._session = None
+            if s and s.proc.poll() is None:
+                s.proc.kill()
+        return {"ok": True}
+
     def start(self) -> dict:
         """返回 {auth_required, url?, usage?}。已登录时 colab usage 直接输出余额。"""
         with self._lock:
-            if self._session and self._session.proc.poll() is None:
-                raise ColabAuthError("登录已在进行中；先提交授权码或等待超时")
+            self._reap_locked()
+            if self._session:
+                raise ColabAuthError(
+                    "登录已在进行中；先提交授权码，或 POST /api/colab/auth/cancel 放弃后重试")
             proc = subprocess.Popen(
                 [self.bin, "usage"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT, text=True, bufsize=1,

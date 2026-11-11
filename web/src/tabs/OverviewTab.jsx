@@ -110,9 +110,22 @@ function ColabCard({ usage }) {
 
   const start = async () => {
     setErr(""); setCode(""); setBusy("start"); setFlow(null);
-    try { setFlow(await api.colabAuthStart()); }
-    catch (e) { setErr(e.message); }
+    try {
+      setFlow(await api.colabAuthStart());
+    } catch (e) {
+      if (/进行中/.test(e.message)) {
+        // 旧会话悬挂 → 自动放弃重开（单按钮自愈）
+        await api.colabAuthCancel().catch(() => {});
+        try { setFlow(await api.colabAuthStart()); setBusy(""); return; }
+        catch (e2) { setErr(e2.message); }
+      } else setErr(e.message);
+    }
     setBusy("");
+  };
+  const restart = async () => {
+    setErr(""); setFlow(null); setCode("");
+    await api.colabAuthCancel().catch(() => {});
+    await start();
   };
   const submit = async (e) => {
     e.preventDefault(); setErr(""); setBusy("submit");
@@ -143,6 +156,7 @@ function ColabCard({ usage }) {
             <button disabled={!!busy} type="submit">
               {busy === "submit" ? "提交中…" : "提交"}
             </button>
+            <button type="button" disabled={!!busy} onClick={restart}>放弃并重开</button>
           </form>
         </div>
       ) : (

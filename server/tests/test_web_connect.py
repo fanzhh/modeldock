@@ -126,3 +126,34 @@ def test_colab_auth_start_twice_conflict(tmp_path, client):
     # 收尾，避免悬挂进程
     mg2 = ColabAuthManager(colab_bin=_fake_colab(tmp_path, "already"))
     set_auth_manager(mg2)
+
+
+def test_colab_auth_cancel_frees_session(tmp_path, client):
+    """cancel 后可立即重新 start（用户点开授权不完成时的自愈路径）。"""
+    set_auth_manager(ColabAuthManager(colab_bin=_fake_colab(tmp_path, "oauth")))
+    client.post("/api/colab/auth/start")
+    cancel = client.post("/api/colab/auth/cancel")
+    assert cancel.status_code == 200 and cancel.json()["ok"] is True
+    again = client.post("/api/colab/auth/start")
+    assert again.status_code == 200
+    assert again.json()["auth_required"] is True
+    assert client.post("/api/colab/auth/cancel").status_code == 200
+
+
+def test_stale_session_auto_reaped(tmp_path):
+    """超时悬挂会话 → start 自动回收并允许新会话（不再死锁 422）。"""
+    import time as _time
+    mg = ColabAuthManager(colab_bin=_fake_colab(tmp_path, "oauth"))
+    mg.start()
+    mg.session.created_at = _time.time() - 7200  # 篡改为两小时前
+    out = mg.start()  # _reap_locked 应回收旧会话
+    assert out["auth_required"] is True
+    mg.cancel()
+
+
+def test_finished_session_auto_reaped(tmp_path):
+    """已退出的会话（未登录场景直接跑完）→ 下次 start 不应报占用。"""
+    mg = ColabAuthManager(colab_bin=_fake_colab(tmp_path, "already"))
+    assert mg.start()["auth_required"] is False  # 进程立即退出并输出余额
+    out2 = mg.start()                            # 旧会话已退出 → 自动回收
+    assert out2["auth_required"] is False

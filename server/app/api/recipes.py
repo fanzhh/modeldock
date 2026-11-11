@@ -193,3 +193,10 @@ def colab_auth_submit(body: ColabAuthCodeIn):
         return get_auth_manager().submit(body.code)
     except ColabAuthError as e:
         raise HTTPException(409, str(e)) from e
+
+
+@router.post("/colab/auth/cancel")
+def colab_auth_cancel():
+    """放弃当前登录会话（卡住时重新开始）。"""
+    from app.core.colab.auth import get_auth_manager
+    return get_auth_manager().cancel()

@@ -22,6 +22,7 @@ export const api = {
 
   // colab login (headless OAuth relay)
   colabAuthStart: () => fetch("/api/colab/auth/start", { method: "POST" }).then(j),
+  colabAuthCancel: () => fetch("/api/colab/auth/cancel", { method: "POST" }).then(j),
   colabAuthSubmit: (code) => fetch("/api/colab/auth/submit", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code }) }).then(j),
