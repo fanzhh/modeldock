@@ -102,7 +102,7 @@ class RecipeOut(BaseModel):
 
 class DeploymentIn(BaseModel):
     recipe_id: int
-    gpu: str = Field(default="T4", pattern="^(T4|L4|A100)$")
+    gpu: str = Field(default="T4", pattern="^(T4|L4|G4|H100|A100)$")
     params: dict = Field(default_factory=dict)
 
 

@@ -1,10 +1,16 @@
-"""配方与部署 API（M0：记录级编排，不真正开 Colab 会话）。"""
+"""配方与部署 API。
+
+M0：记录级编排。M2：接 Colab 编排器（start/cancel/release/logs/notebook/usage）。
+"""
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.colab.notebook import render_cell
+from app.core.colab.orchestrator import get_orchestrator
 from app.db import Deployment, Recipe, get_db_engine
 from app.schemas import DeploymentIn, DeploymentOut, RecipeIn, RecipeOut
 
@@ -63,3 +69,60 @@ def get_deployment(dep_id: int):
         if not d:
             raise HTTPException(404, "deployment not found")
         return d
+
+
+# ---- M2：Colab 编排 ----
+
+
+def _get_dep(dep_id: int) -> Deployment:
+    with Session(get_db_engine()) as s:
+        d = s.get(Deployment, dep_id)
+    if not d:
+        raise HTTPException(404, "deployment not found")
+    return d
+
+
+@router.post("/deployments/{dep_id}/start", response_model=DeploymentOut)
+async def start_deployment(dep_id: int):
+    """启动（或继续）编排流水线。已在跑 → 409。"""
+    d = _get_dep(dep_id)
+    if not get_orchestrator().start(dep_id):
+        raise HTTPException(409, "deployment already running")
+    return _get_dep(dep_id)
+
+
+@router.post("/deployments/{dep_id}/cancel", response_model=DeploymentOut)
+def cancel_deployment(dep_id: int):
+    _get_dep(dep_id)
+    get_orchestrator().cancel(dep_id)
+    return _get_dep(dep_id)
+
+
+@router.post("/deployments/{dep_id}/release", response_model=DeploymentOut)
+async def release_deployment(dep_id: int):
+    """释放会话（幂等）：删临时凭证 → 停 VM → done。"""
+    _get_dep(dep_id)
+    await get_orchestrator().release(dep_id)
+    return _get_dep(dep_id)
+
+
+@router.get("/deployments/{dep_id}/logs", response_class=PlainTextResponse)
+def deployment_logs(dep_id: int):
+    return _get_dep(dep_id).logs or ""
+
+
+@router.get("/deployments/{dep_id}/notebook", response_class=PlainTextResponse)
+def deployment_notebook(dep_id: int):
+    """手动兜底：生成可粘贴到 Colab 网页版的单元格（API 变动时的退路）。"""
+    try:
+        return render_cell(dep_id)
+    except ValueError as e:
+        if "not found" in str(e):
+            raise HTTPException(404, str(e)) from e
+        raise HTTPException(422, str(e)) from e
+
+
+@router.get("/colab/usage")
+def colab_usage():
+    """compute units 余额（经当前后端；mock 返回占位）。"""
+    return get_orchestrator().backend.usage()
