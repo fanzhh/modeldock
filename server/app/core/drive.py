@@ -122,7 +122,10 @@ class Drive:
     # ---- primitives ----
     def _run(self, *args: str, timeout: int = 60) -> str:
         cmd = [self.bin, *args, f"--config={self.config_path}"]
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        except FileNotFoundError as e:
+            raise DriveError(f"rclone binary not found: {self.bin}") from e
         # 输出脱敏：rclone 一般不回显 token，这里做二次防护
         out = proc.stdout if proc.returncode == 0 else proc.stderr
         if proc.returncode != 0:
