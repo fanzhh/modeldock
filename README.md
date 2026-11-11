@@ -6,12 +6,13 @@
 
 > 设计文档：[DESIGN.md](./DESIGN.md) · 界面原型：[design/prototype.html](./design/prototype.html)
 
-## 当前状态（M0 骨架）
+## 当前状态（M1：Google Drive 接入完成）
 
 - ✅ 设计稿 + 高保真可交互原型（5 页面 + Chat）
 - ✅ `server/`：FastAPI + SQLite 元数据层
   - 凭证保险箱（Fernet 加密，密钥 0600，token 只写不读）
   - Google Drive rclone 通道封装（不走 Colab drive.mount，见 DESIGN.md §3）
+  - Google OAuth 向导 + 已有 rclone remote 一键导入（托管 `gdrive`，0600）
   - 模型下载引擎：HF / 魔搭双源解析 + 流式断点续传 + 队列
   - API：accounts / models(families,tasks) / recipes / deployments
 - ✅ `web/`：Vite React 开发控制台（拉取 health / 凭证 / 家族 / 任务）
@@ -25,7 +26,7 @@
 # 1. 后端（默认监听 127.0.0.1:8820，数据目录 ~/.modeldock）
 cd server
 uv sync
-uv run pytest                 # 15 个测试
+uv run pytest                 # 26 个测试
 uv run python -m uvicorn app.main:app --port 8820
 
 # 2. 前端开发台（另开终端；代理 /api → 127.0.0.1:8820）
@@ -50,8 +51,42 @@ curl -X POST localhost:8820/api/models/tasks -H 'Content-Type: application/json'
 curl localhost:8820/api/health
 ```
 
-> 上传到 Drive 需要 `POST` oauth 凭证并注册 rclone remote（M0 已具备
-> `drive.register_remote()`，CLI 引导在 roadmap 中）。
+## M1：连接 Google Drive（两条路）
+
+先看状态（自动探测本机 `~/.config/rclone/rclone.conf` 里已有的 drive remote）：
+
+```bash
+curl localhost:8820/api/accounts/drive/status
+```
+
+**路 A — 导入已有 rclone remote**（本机已在用 rclone 的话最快）：
+
+```bash
+curl -X POST localhost:8820/api/accounts/drive/import \
+  -H 'Content-Type: application/json' \
+  -d '{"remote_name":"gdrive"}'     # 复制进托管配置 ~/.modeldock/rclone.conf（0600）
+```
+
+**路 B — OAuth 向导**：需先在 Google Cloud Console 建 OAuth 客户端
+（类型「桌面应用」），重定向 URI 填 `http://127.0.0.1:8820/api/accounts/drive/oauth/callback`：
+
+```bash
+# 1. 发起（client_secret 即时入 vault，不回显）
+curl -X POST localhost:8820/api/accounts/drive/oauth/start \
+  -H 'Content-Type: application/json' \
+  -d '{"client_id":"xxx.apps.googleusercontent.com","client_secret":"GOCSPX-xxx"}'
+# 2. 浏览器打开返回的 authorize_url 授权；回调自动完成
+#    token 交换 → vault 密封 → 注册托管 remote `gdrive`
+```
+
+连好后检查健康与配额：
+
+```bash
+curl localhost:8820/api/accounts/drive/quota   # 409 = 未注册
+```
+
+> Drive 权限只申请 `https://www.googleapis.com/auth/drive`；
+> refresh_token 明文只存在于 0600 的 rclone 配置与加密 vault 中。
 
 ## 目录
 
@@ -62,11 +97,11 @@ modeldock/
 ├── server/                 FastAPI 后端（uv 管理）
 │   ├── app/
 │   │   ├── api/            accounts / models / recipes / deployments
-│   │   ├── core/           vault（加密）/ drive（rclone）/ downloads（HF+魔搭+队列）
+│   │   ├── core/           vault（加密）/ gauth（OAuth）/ drive（rclone）/ downloads（HF+魔搭+队列）
 │   │   ├── config.py       环境变量 MODELDOCK_*
 │   │   ├── db.py           SQLAlchemy 模型
 │   │   └── main.py         入口 + lifespan
-│   └── tests/              15 个单元/集成测试
+│   └── tests/              26 个单元/集成测试
 ├── web/                    Vite React 控制台骨架
 └── docker-compose.yml      本地编排（含 rclone 的 server 容器）
 ```
@@ -83,7 +118,7 @@ modeldock/
 
 ## 路线图（对应 DESIGN.md §8）
 
-- [ ] M1：Google OAuth 引导 + rclone remote 一键注册（CLI 向导）
+- [x] M1：Google Drive 接入（状态探测 / 已有 remote 一键导入 / OAuth 向导，托管 remote `gdrive`）
 - [ ] M2：Colab 会话编排（create→install→sync→run→tunnel→release）
 - [ ] M3：内置配方（ComfyUI H3 / llama.cpp chat）+ Chat 面板
 - [ ] M4：余额快照、自动释放策略、模型家族管理 UI

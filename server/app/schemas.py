@@ -24,6 +24,11 @@ class SecretOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class OAuthStartIn(BaseModel):
+    client_id: str = Field(min_length=1, max_length=512)
+    client_secret: str = Field(min_length=1, max_length=2048)
+
+
 class HealthOut(BaseModel):
     ok: bool
     drive: dict
