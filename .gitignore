@@ -1,0 +1,22 @@
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# node
+node_modules/
+web/dist/
+
+# data & secrets
+.modeldock/
+*.db
+vault.key
+vault/
+rclone.conf
+*.vault
+
+# misc
+.DS_Store
+*.log

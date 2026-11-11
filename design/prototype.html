@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ModelDock 原型 v0.1</title>
+<style>
+
+:root {
+  --background: #0b0d10;
+  --foreground: #e8eaed;
+  --card: #151920;
+  --card-foreground: #e8eaed;
+  --muted: #1d2430;
+  --muted-foreground: #9aa3b2;
+  --secondary: #1a212c;
+  --secondary-foreground: #c3cad6;
+  --border: #262d3a;
+  --primary: #4f7cff;
+  --primary-foreground: #ffffff;
+  --accent: #22d3ee;
+  --accent-foreground: #052029;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --success: #34d399;
+  --success-surface: #0d2b1e;
+  --success-foreground: #052b11;
+  --warning: #fbbf24;
+  --info: #60a5fa;
+  --info-surface: #0d2340;
+  --info-foreground: #04263c;
+  --chart-1: #22d3ee;
+  --chart-2: #4f7cff;
+  --chart-3: #34d399;
+  --code-background: #0e1218;
+  --radius: 12px;
+  --font-sans: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "SF Mono", Consolas, Menlo, monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--font-sans); color: var(--foreground); -webkit-font-smoothing: antialiased; }
+.app {
+  max-width: 1080px; margin: 0 auto; padding: 18px 16px;
+  background: transparent; border-radius: var(--radius);
+}
+.brand {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+}
+.logo {
+  width: 34px; height: 34px; border-radius: 9px; flex: none;
+  background: linear-gradient(135deg, var(--primary), var(--chart-1));
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 800; font-size: 16px;
+}
+.brand h1 { font-size: 18px; font-weight: 700; }
+.brand .tag {
+  font-size: 11px; color: var(--secondary-foreground);
+  border: 1px solid var(--border); padding: 2px 8px; border-radius: 999px;
+  background: var(--secondary);
+}
+.brand .spacer { flex: 1; }
+.acct {
+  display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted-foreground);
+}
+.acct .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+.acct .avatar {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--accent);
+  color: var(--accent-foreground); display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+}
+.tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.tab {
+  padding: 8px 14px; border-radius: 999px; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--border); color: var(--muted-foreground); background: transparent;
+}
+.tab.active { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); font-weight: 600; }
+.page { display: none; }
+.page.active { display: block; animation: fade .18s ease; }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+.grid-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px;
+}
+.kpi .label { font-size: 12px; color: var(--muted-foreground); display: flex; justify-content: space-between; }
+.kpi .value { font-size: 26px; font-weight: 800; margin-top: 6px; letter-spacing: -.5px; }
+.kpi .sub { font-size: 11px; color: var(--muted-foreground); margin-top: 4px; }
+.bar { height: 6px; border-radius: 4px; background: var(--secondary); margin-top: 10px; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 4px; background: var(--primary); }
+.section-title { font-size: 14px; font-weight: 700; margin: 18px 0 10px; display: flex; align-items: center; gap: 8px; }
+.section-title .more { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--primary); cursor: pointer; }
+.recipes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.recipe { display: flex; flex-direction: column; gap: 8px; }
+.recipe .icon { font-size: 22px; }
+.recipe b { font-size: 14px; }
+.recipe p { font-size: 12px; color: var(--muted-foreground); line-height: 1.5; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-size: 10.5px; padding: 3px 8px; border-radius: 999px; background: var(--secondary); color: var(--secondary-foreground); border: 1px solid var(--border); }
+.chip.ok { background: var(--success-surface, var(--success)); color: var(--success-foreground, #062); border-color: transparent; }
+.btn {
+  border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; font-weight: 600;
+  background: var(--primary); color: var(--primary-foreground);
+}
+.btn.ghost { background: transparent; color: var(--foreground); border: 1px solid var(--border); }
+.btn.warn { background: var(--destructive); color: var(--destructive-foreground); }
+.btn.sm { padding: 4px 10px; font-size: 12px; }
+.session-box { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.session-box .gpu { font-size: 22px; font-weight: 800; }
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+th { text-align: left; color: var(--muted-foreground); font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: none; }
+.badge { font-size: 10.5px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+.badge.run { background: var(--success); color: var(--success-foreground, #052b11); }
+.badge.done { background: var(--secondary); color: var(--muted-foreground); }
+.badge.fail { background: var(--destructive); color: var(--destructive-foreground); }
+.badge.sync { background: var(--info); color: var(--info-foreground, #04263c); }
+.toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.search {
+  flex: 1; min-width: 180px; padding: 8px 12px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--card); color: var(--muted-foreground); font-size: 13px;
+}
+.hw { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 6px; }
+.hw .item { flex: 1; min-width: 160px; }
+.hw .item b { display: block; font-size: 13px; margin-bottom: 2px; }
+.hw .item span { font-size: 11.5px; color: var(--muted-foreground); }
+.steps { display: flex; gap: 8px; margin: 14px 0 16px; flex-wrap: wrap; }
+.step { flex: 1; min-width: 92px; text-align: center; font-size: 11px; color: var(--muted-foreground); position: relative; padding-top: 8px; }
+.step::before { content: ""; display: block; height: 4px; border-radius: 2px; background: var(--secondary); margin-bottom: 8px; }
+.step.done::before { background: var(--success); }
+.step.cur::before { background: var(--primary); }
+.step b { display: block; font-size: 12px; color: var(--foreground); }
+.log {
+  background: var(--code-background); border-radius: var(--radius); padding: 12px 14px;
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.75; color: var(--muted-foreground);
+  white-space: pre-wrap; max-height: 190px; overflow: auto;
+}
+.log .ok { color: var(--success); }
+.log .info { color: var(--info); }
+.log .warn { color: var(--warning); }
+.split { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
+@media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
+.gauge { margin: 6px 0 12px; }
+.gauge .row { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted-foreground); margin-top: 4px; }
+.toggle { display: inline-flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted-foreground); }
+.switch { width: 36px; height: 20px; border-radius: 999px; background: var(--primary); position: relative; display: inline-block; }
+.switch::after { content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%; background: #fff; top: 2px; right: 2px; }
+.field { margin-bottom: 12px; }
+.field label { font-size: 12px; color: var(--muted-foreground); display: block; margin-bottom: 5px; }
+.input {
+  width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--background); color: var(--foreground); font-size: 13px;
+}
+.hint { font-size: 11px; color: var(--muted-foreground); margin-top: 4px; line-height: 1.5; }
+.conn { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.conn:last-child { border-bottom: none; }
+.conn .ic { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; background: var(--secondary); }
+.conn b { font-size: 13.5px; display: block; }
+.conn span { font-size: 11.5px; color: var(--muted-foreground); }
+.conn .spacer { flex: 1; }
+.footer-note { font-size: 11px; color: var(--muted-foreground); margin-top: 14px; text-align: center; }
+.dlq .row { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.dlq .row:last-child { border-bottom: none; }
+.dlq .top { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 6px; gap: 12px; flex-wrap: wrap; }
+.dlq .meta { font-size: 11px; color: var(--muted-foreground); display: flex; gap: 12px; margin-top: 6px; flex-wrap: wrap; }
+.bar.thin { margin-top: 8px; height: 5px; }
+.bar i.g { background: var(--chart-1); }
+svg text { font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="brand">
+    <div class="logo">M</div>
+    <h1>ModelDock</h1>
+    <span class="tag">原型 v0.1 · 本地优先</span>
+    <div class="spacer"></div>
+    <div class="acct"><span class="dot"></span>Drive · Colab 已连接</div>
+    <div class="avatar">樊</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-p="p1">总览</div>
+    <div class="tab" data-p="p2">模型仓库</div>
+    <div class="tab" data-p="p3">部署</div>
+    <div class="tab" data-p="p6">Chat</div>
+    <div class="tab" data-p="p4">会话与费用</div>
+    <div class="tab" data-p="p5">设置</div>
+  </div>
+
+  <!-- ===== 总览 ===== -->
+  <div class="page active" id="p1">
+    <div class="grid-kpi">
+      <div class="card kpi">
+        <div class="label">Colab 余额 <span>C U</span></div>
+        <div class="value">40.23</div>
+        <div class="sub">较上次会话 −15.95</div>
+      </div>
+      <div class="card kpi">
+        <div class="label">Google Drive</div>
+        <div class="value">4.99<span style="font-size:14px;color:var(--muted-foreground)"> / 5 TB</span></div>
+        <div class="bar"><i style="width:6%"></i></div>
+      </div>
+      <div class="card kpi">
+        <div class="label">模型库</div>
+        <div class="value">29 GB</div>
+        <div class="sub">1 个家族 · 4 个文件 · 校验完整</div>
+      </div>
+      <div class="card kpi">
+        <div class="label">活动会话</div>
+        <div class="value" style="color:var(--success)">1</div>
+        <div class="sub">A100 · 运行 47 分钟</div>
+      </div>
+    </div>
+
+    <div class="session-box card" style="margin-bottom:14px">
+      <div style="font-size:26px">⚡</div>
+      <div>
+        <div class="gpu">ComfyUI · MiniMax H3 视频管线</div>
+        <div style="font-size:11.5px;color:var(--muted-foreground)">colab-a100-40g · tunnels: <code>localhost:8188</code> 健康检查通过</div>
+      </div>
+      <div style="flex:1"></div>
+      <button class="btn ghost sm">打开服务</button>
+      <button class="btn warn sm">释放会话</button>
+    </div>
+
+    <div class="section-title">快速部署 <span class="more">全部配方 →</span></div>
+    <div class="recipes">
+      <div class="card recipe">
+        <div class="icon">🎬</div>
+        <b>ComfyUI · H3 图生视频</b>
+        <p>MiniMax H3 + GGUF/VAE，A100 建议，含工作流模板</p>
+        <div class="chips"><span class="chip">29 GB</span><span class="chip">A100 / L4</span><span class="chip ok">云盘已就绪</span></div>
+        <button class="btn sm">部署到 Colab</button>
+      </div>
+      <div class="card recipe">
+        <div class="icon">🎨</div>
+        <b>ComfyUI · SDXL</b>
+        <p>SDXL + LoRA，T4 即可跑 1024²</p>
+        <div class="chips"><span class="chip">12.1 GB</span><span class="chip">T4 / L4</span><span class="chip">缺 LoRA ×2</span></div>
+        <button class="btn sm">部署到 Colab</button>
+      </div>
+      <div class="card recipe">
+        <div class="icon">🦙</div>
+        <b>Chat · llama.cpp Server</b>
+        <p>GGUF 对话模型，OpenAI 兼容 /v1，T4 即可</p>
+        <div class="chips"><span class="chip">GGUF</span><span class="chip">T4+</span><span class="chip ok">云盘就绪</span></div>
+        <button class="btn sm">部署到 Colab</button>
+      </div>
+      <div class="card recipe">
+        <div class="icon">💬</div>
+        <b>Chat · vLLM</b>
+        <p>Safetensors 多并发服务（A100），连续批处理高峰吞吐</p>
+        <div class="chips"><span class="chip">15 GB</span><span class="chip">A100</span><span class="chip">来源 HF</span></div>
+        <button class="btn sm">部署到 Colab</button>
+      </div>
+    </div>
+
+    <div class="section-title">最近任务</div>
+    <div class="card" style="padding:4px 6px">
+      <table>
+        <tr><th>任务</th><th>目标</th><th>状态</th><th>耗时</th></tr>
+        <tr><td>上传 text_encoder 文件</td><td>Drive /modeldock/models/minimax-h3</td><td><span class="badge run">上传中 62%</span></td><td>ETA 8 分钟</td></tr>
+        <tr><td>部署 ComfyUI H3 视频管线</td><td>Colab A100</td><td><span class="badge done">ready</span></td><td>6 分 20 秒</td></tr>
+        <tr><td>下载 minimax_h3 GGUF (Q4_K_M)</td><td>huggingface → Drive</td><td><span class="badge done">完成</span></td><td>42 分钟</td></tr>
+        <tr><td>编译 llama.cpp CUDA 构建</td><td>Colab L4</td><td><span class="badge fail">失败 · 重试</span></td><td>—</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== 模型仓库 ===== -->
+  <div class="page" id="p2">
+    <div class="toolbar">
+      <div class="search">🔍 搜索模型 / 文件（GGUF · VAE · LoRA · 对话模型）…</div>
+      <div class="chips" style="align-items:center">
+        <span class="chip ok">HF · token 已存（read-only）</span>
+        <span class="chip ok">魔搭 · token 已存</span>
+      </div>
+      <button class="btn">＋ 添加下载任务</button>
+    </div>
+
+    <div class="split">
+      <div>
+        <div class="section-title" style="margin-top:0">模型家族 · 3</div>
+        <div class="card" style="padding:4px 6px">
+          <table>
+            <tr><th>家族</th><th>文件</th><th>合计</th><th>完整性</th><th></th></tr>
+            <tr>
+              <td><b>MiniMax H3</b> · 图生视频 14B<br><span style="color:var(--muted-foreground);font-size:11px">GGUF Q4_K_M · Video/Audio VAE · TextEncoder</span></td>
+              <td>4</td><td><b>29 GB</b></td>
+              <td><span class="badge run">完整</span></td>
+              <td><button class="btn ghost sm">管理</button></td>
+            </tr>
+            <tr>
+              <td><b>SDXL Base</b><br><span style="color:var(--muted-foreground);font-size:11px">safetensors · refiner · LoRA ×2</span></td>
+              <td>5</td><td><b>12.1 GB</b></td>
+              <td><span class="badge fail">缺 1 校验</span></td>
+              <td><button class="btn ghost sm">管理</button></td>
+            </tr>
+            <tr>
+              <td><b>Qwen3 8B Chat</b><br><span style="color:var(--muted-foreground);font-size:11px">GGUF Q4_K_M · 对话 · 双源校验一致</span></td>
+              <td>1</td><td><b>4.9 GB</b></td>
+              <td><span class="badge done">完整</span></td>
+              <td><button class="btn ghost sm">管理</button></td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="section-title">传输策略</div>
+        <div class="card">
+          <div class="toggle"><span class="switch"></span> 跳过 Drive rclone 中转 · HF 直传云盘（colab copyurl）</div>
+          <div class="hint" style="margin-top:8px">带宽限速 4 MB/s · 并行 4 分片 · 断点续传始终开启 · 大于 15GB 单文件自动分卷</div>
+        </div>
+      </div>
+
+      <div class="dlq">
+        <div class="section-title" style="margin-top:0">下载队列 · 2</div>
+        <div class="card">
+          <div class="row">
+            <div class="top"><b>Qwen3-8B GGUF（Q4_K_M）</b><span style="color:var(--muted-foreground)">3.1 / 4.9 GB</span></div>
+            <div class="bar thin"><i class="g" style="width:63%"></i></div>
+            <div class="meta"><span>源 魔搭 · 限速模式</span><span>↓ 6.2 MB/s</span><span>ETA 4 分钟</span><span class="chip ok">HF→魔搭 自动切换</span></div>
+          </div>
+          <div class="row">
+            <div class="top"><b>Qwen3-14B（gated）</b><span style="color:var(--warning)">等待站方许可确认</span></div>
+            <div class="bar thin"><i style="width:0%"></i></div>
+            <div class="meta"><span>源 HuggingFace · 需在 HF 站内同意协议</span><button class="btn ghost sm" style="margin-left:auto">去 HF 同意</button></div>
+          </div>
+          <div class="row">
+            <div class="top"><b>sdxl_refiner</b><span style="color:var(--muted-foreground)">暂停 · 断点已保存</span></div>
+            <div class="bar thin"><i style="width:38%"></i></div>
+            <div class="meta"><span>分段 4</span><span>已存 2.6 GB</span><button class="btn ghost sm" style="margin-left:auto">继续</button></div>
+          </div>
+        </div>
+        <div class="section-title">最近入库</div>
+        <div class="card">
+          <table>
+            <tr><th>文件</th><th>大小</th></tr>
+            <tr><td>minimax_h3_text_encoder</td><td>14.6 GB</td></tr>
+            <tr><td>minimax_h3_video_vae</td><td>4.9 GB</td></tr>
+            <tr><td>minimax_h3_audio_vae</td><td>577 MB</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 部署 ===== -->
+  <div class="page" id="p3">
+    <div class="card" style="margin-bottom:12px">
+      <div class="session-box">
+        <div>
+          <b style="font-size:15px">ComfyUI · MiniMax H3 图生视频</b>
+          <div style="font-size:11.5px;color:var(--muted-foreground)">目标：闲时失望率 最低 · 模型总体积 29 GB · Colab 磁盘占用校验通过</div>
+        </div>
+        <div style="flex:1"></div>
+        <button class="btn warn sm">取消部署</button>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step done"><b>① 会话编排</b>A100 已创建</div>
+      <div class="step done"><b>② 密钥注入</b>临时 rclone</div>
+      <div class="step done"><b>③ 环境安装</b>ComfyUI+节点</div>
+      <div class="step cur"><b>④ 模型装配</b>Drive → Colab</div>
+      <div class="step"><b>⑤ 服务启动</b>端口 8188</div>
+      <div class="step"><b>⑥ 隧道</b>反代访问</div>
+      <div class="step"><b>⑦ 释放策略</b>空闲 30 分</div>
+    </div>
+
+    <div class="split">
+      <div>
+        <div class="section-title" style="margin-top:0">当前步骤 · 模型装配</div>
+        <div class="card">
+          <div class="gauge">
+            <div style="display:flex;justify-content:space-between;font-size:12.5px">
+              <b>18.1 / 29.2 GB</b><span style="color:var(--muted-foreground)">38.4 MB/s · ETA 4 分 48 秒</span>
+            </div>
+            <div class="bar thin"><i style="width:62%"></i></div>
+            <div class="row"><span>text_encoder ✓</span><span>video_vae ✓</span><span>audio_vae ✓</span><span>GGUF 62%</span></div>
+          </div>
+          <div class="chips">
+            <span class="chip ok">VAE 已就位</span>
+            <span class="chip">copy 直接链接</span>
+            <span class="chip">校验后删除临时凭证</span>
+          </div>
+        </div>
+        <div class="section-title">部署日志</div>
+        <div class="log"><span class="ok">[ok]</span> 会话 colab-a100-40g 创建 · A100 40GB ✓
+<span class="ok">[ok]</span> 临时 rclone 凭证注入 /content/.secrets（TTL = 会话）
+<span class="ok">[ok]</span> git clone ComfyUI → 检出 v0.44.0
+<span class="ok">[ok]</span> 安装 ComfyUI-GGUF / HyperFlow 节点
+<span class="info">[..]</span> rclone copy gdrive:colab/models/minimax-h3 /root/ComfyUI/models
+<span class="info">[..]</span>   ├─ text_encoder ✔ 14.6 GB
+<span class="info">[..]</span>   ├─ video_vae ✔ 4.9 GB
+<span class="info">[..]</span>   └─ gguf ▸ 62% · 38.4 MB/s
+<span class="warn">[skip]</span> drive.mount 已禁用（OAuth 兼容缺陷 · 走 rclone 通道）</div>
+      </div>
+
+      <div>
+        <div class="section-title" style="margin-top:0">GPU 选择</div>
+        <div class="card">
+          <table>
+            <tr><th>GPU</th><th>显存</th><th>预计消耗</th><th></th></tr>
+            <tr><td><b>A100</b></td><td>40 GB</td><td>≈ 1.8 CU/h</td><td><span class="badge run">当前</span></td></tr>
+            <tr><td>L4</td><td>24 GB</td><td>≈ 0.9 CU/h</td><td><button class="btn ghost sm">切换</button></td></tr>
+            <tr><td>T4</td><td>16 GB</td><td>不满足模型</td><td><span class="badge fail">禁用</span></td></tr>
+          </table>
+          <div class="hint" style="margin-top:10px">GPU 容量预检：本配方需 ≥ 30 GB 显存 · 磁盘需 ≥ 80 GB · 全部通过</div>
+        </div>
+        <div class="section-title">释放策略</div>
+        <div class="card">
+          <div class="toggle"><span class="switch"></span> 空闲 30 分钟自动释放</div>
+          <div class="toggle" style="margin-top:10px"><span class="switch" style="background:var(--secondary)"></span> 生成任务完成后释放（配合工作流空闲钩子）</div>
+          <div class="hint" style="margin-top:10px">释放前：删除 Colab 内临时凭证 → 清理 /content 输出缓存 → 输出产物回传 Drive /modeldock/outputs</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Chat ===== -->
+  <div class="page" id="p6">
+    <div class="card" style="margin-bottom:12px">
+      <div class="session-box">
+        <div style="font-size:22px">🦙</div>
+        <div>
+          <b style="font-size:14px">Qwen3-8B · GGUF Q4_K_M · llama.cpp server</b>
+          <div style="font-size:11.5px;color:var(--muted-foreground)">colab-tunnel → <code>localhost:8080/v1</code> · 上下文 8192 · OpenAI 兼容</div>
+        </div>
+        <div style="flex:1"></div>
+        <span class="badge run">ready · 流式 ✓</span>
+        <button class="btn ghost sm">导出端点</button>
+        <button class="btn warn sm">释放会话</button>
+      </div>
+    </div>
+
+    <div class="split">
+      <div>
+        <div class="card" style="padding:16px">
+          <div class="msg" style="padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;font-size:13px">
+            <div style="font-size:10.5px;color:var(--primary);font-weight:700;margin-bottom:4px">You</div>
+            用三句话向没接触过 AI 的朋友解释：为什么本地跑大模型很重要？
+          </div>
+          <div class="msg" style="padding:10px 12px;background:var(--secondary);border-radius:var(--radius);font-size:13px;line-height:1.7">
+            <div style="font-size:10.5px;color:var(--chart-1);font-weight:700;margin-bottom:4px">Qwen3-8B · 38 tok/s</div>
+            第一，数据不出门。你写的草稿、聊天记录、公司资料都留在自己手里……<br>
+            第二，没有 API 账单，跑多少次都只花电费；像 Colab 这种按需 GPU，闲时释放就很便宜。<br>
+            第三，模型即文件。GGUF 放云盘里，换台机器也能直接加载<span style="color:var(--muted-foreground)">▍</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <div class="search" style="flex:1">输入消息…（Enter 发送 / Shift+Enter 换行）</div>
+            <button class="btn">发送</button>
+            <button class="btn ghost">■ 停止</button>
+          </div>
+        </div>
+        <div class="hint" style="margin-top:8px">历史本地保存 · 会话密钥不落云盘 · 导出端点供 Cherry Studio / OpenWebUI 等本机应用接入</div>
+      </div>
+      <div>
+        <div class="section-title" style="margin-top:0">推理参数</div>
+        <div class="card">
+          <div class="field"><label>temperature</label><input class="input" value="0.7"></div>
+          <div class="field"><label>top_p</label><input class="input" value="0.9"></div>
+          <div class="field"><label>max_tokens</label><input class="input" value="2048"></div>
+          <div class="field"><label>System Prompt</label><input class="input" value="你是一个简洁的技术助手。"></div>
+          <div class="hint" style="margin-top:4px">上下文 8192/8192 · 量化 Q4_K_M · 显存 9.2/24 GB (L4)</div>
+        </div>
+        <div class="section-title">快速切换模型</div>
+        <div class="card" style="padding:4px 6px">
+          <table>
+            <tr><th>模型</th><th>状态</th><th></th></tr>
+            <tr><td><b>Qwen3-8B</b> Q4</td><td><span class="badge run">当前</span></td><td></td></tr>
+            <tr><td>Qwen3-14B Q4</td><td><span class="badge sync">需 L4 → A100</span></td><td><button class="btn ghost sm">切换</button></td></tr>
+            <tr><td>Llama-3-8B Q5</td><td><span class="badge done">云盘</span></td><td><button class="btn ghost sm">挂载</button></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 会话与费用 ===== -->
+  <div class="page" id="p4">
+    <div class="grid-kpi">
+      <div class="card kpi">
+        <div class="label">本月会话</div>
+        <div class="value">17</div>
+        <div class="sub">A100 ×9 · L4 ×6 · T4 ×2</div>
+      </div>
+      <div class="card kpi">
+        <div class="label">本月估算消耗</div>
+        <div class="value">38.6 CU</div>
+        <div class="sub">按 A100 15.6 CU/h 费率</div>
+      </div>
+      <div class="card kpi">
+        <div class="label">当前会话时长</div>
+        <div class="value">47<span style="font-size:14px;color:var(--muted-foreground)"> 分钟</span></div>
+        <div class="sub">≈ 12.2 CU</div>
+      </div>
+      <div class="card kpi">
+        <div class="label">Peak 显存</div>
+        <div class="value">30<span style="font-size:14px;color:var(--muted-foreground)"> / 40 GB</span></div>
+        <div class="bar"><i style="width:75%"></i></div>
+      </div>
+    </div>
+
+    <div class="split">
+      <div>
+        <div class="section-title" style="margin-top:0">余额变化（compute units）</div>
+        <div class="card">
+          <svg width="100%" height="150" viewBox="0 0 420 150">
+            <polyline fill="none" stroke="var(--chart-1)" stroke-width="2.5"
+              points="0,20 60,22 120,24 180,60 240,88 300,92 360,116 420,118"/>
+            <circle cx="180" cy="60" r="4" fill="var(--chart-1)"/>
+            <circle cx="420" cy="118" r="4" fill="var(--primary)"/>
+            <text x="150" y="46" font-size="10" fill="var(--muted-foreground)">A100 部署 −15.95</text>
+            <text x="330" y="138" font-size="10" fill="var(--muted-foreground)">今日 40.23</text>
+            <line x1="0" y1="118" x2="420" y2="118" stroke="var(--border)" stroke-dasharray="3,4"/>
+          </svg>
+        </div>
+        <div class="section-title">活跃会话 · GPU 特征</div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted-foreground)">
+            <span>采样间隔 5s · 实测期间均值 · 峰值功耗 343 W</span><span>利用率</span>
+          </div>
+          <svg width="100%" height="64" viewBox="0 0 420 64">
+            <polyline fill="none" stroke="var(--chart-2)" stroke-width="2"
+              points="0,48 30,44 60,50 90,40 120,12 150,16 180,42 210,10 240,18 270,38 300,46 330,22 360,30 390,52 420,50"/>
+          </svg>
+        </div>
+      </div>
+      <div>
+        <div class="section-title" style="margin-top:0">历史会话</div>
+        <div class="card" style="padding:4px 6px">
+          <table>
+            <tr><th>GPU</th><th>时长</th><th>配方</th><th>估算</th></tr>
+            <tr><td><b>A100</b></td><td>24.4 分钟</td><td>H3 视频</td><td>6.3 CU</td></tr>
+            <tr><td><b>A100</b></td><td>42.1 分钟</td><td>H3 视频（含上传）</td><td>10.9 CU</td></tr>
+            <tr><td>L4</td><td>1.8 小时</td><td>SDXL</td><td>1.7 CU</td></tr>
+            <tr><td>T4</td><td>12 分钟</td><td>llama.cpp 测试</td><td class="hint">配额内</td></tr>
+          </table>
+        </div>
+        <div class="section-title">政策</div>
+        <div class="card">
+          <div class="toggle"><span class="switch"></span> 空闲 30 分钟自动释放</div>
+          <div class="toggle" style="margin-top:10px"><span class="switch"></span> 每次部署前余额快照（事后对账）</div>
+          <div class="hints hint" style="margin-top:10px">余额快照入库：56.19 → 40.23（本周期）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 设置 ===== -->
+  <div class="page" id="p5">
+    <div class="split">
+      <div>
+        <div class="section-title" style="margin-top:0">账户连接</div>
+        <div class="card">
+          <div class="conn">
+            <div class="ic">🛰</div>
+            <div><b>Google Drive</b><span>rclone remote <code>gdrive:</code> · 5 TB · 已用 2.7 GB</span></div>
+            <div class="spacer"></div>
+            <span class="badge run">已连接</span>
+            <button class="btn ghost sm">体检</button>
+          </div>
+          <div class="conn">
+            <div class="ic">🚀</div>
+            <div><b>Google Colab</b><span>余额 40.23 CU · 可申请 A100/L4/T4</span></div>
+            <div class="spacer"></div>
+            <span class="badge run">已连接</span>
+            <button class="btn ghost sm">体检</button>
+          </div>
+          <div class="conn">
+            <div class="ic">🔐</div>
+            <div><b>凭证保险箱</b><span>OS Keychain 加密 · 2 个 remote · 上轮换 3 天前</span></div>
+            <div class="spacer"></div>
+            <button class="btn ghost sm">轮换</button>
+          </div>
+        </div>
+
+        <div class="section-title">Colab 集成</div>
+        <div class="card">
+          <div class="field">
+            <label>通道模式</label>
+            <div class="chips">
+              <span class="chip ok">默认 · 会话 API（colab-cli 封装）</span>
+              <span class="chip">备用 · 浏览器已登录会话</span>
+              <span class="chip">备用 · 手动 Notebook 导出</span>
+            </div>
+            <div class="hint">探测到 Drive mount OAuth 缺陷时自动切换 rclone 直连</div>
+          </div>
+          <div class="field" style="margin-top:12px">
+            <label>部署时注入凭证</label>
+            <div class="toggle"><span class="switch"></span> 只读模型目录 · 会话结束自毁</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title" style="margin-top:0">传输</div>
+        <div class="card">
+          <div class="field"><label>并发分片</label><input class="input" value="4"></div>
+          <div class="field"><label>带宽限速（MB/s）</label><input class="input" value="4.0"></div>
+          <div class="field"><label>本地中转目录</label><input class="input" value="/Users/you/modeldock/cache"></div>
+          <div class="hint">rclone copyurl 直传未开启 · 30 天未访问的缓存自动清空</div>
+        </div>
+        <div class="section-title">数据</div>
+        <div class="card">
+          <div class="field"><label>数据库备份</label>
+            <div class="toggle"><span class="switch"></span> 每日备份到 Drive /modeldock/backups</div>
+          </div>
+          <div class="hint" style="margin-top:6px">元数据不含任何账户凭证。凭证仅存于保险箱。</div>
+          <button class="btn ghost sm" style="margin-top:10px">立即备份</button>
+        </div>
+        <div class="section-title">安全围栏</div>
+        <div class="card">
+          <div class="toggle"><span class="switch"></span> 监听地址 127.0.0.1（禁止 0.0.0.0）</div>
+          <div style="height:8px"></div>
+          <div class="toggle"><span class="switch"></span> 多因素确认成人操作（部署/释放需二次点击）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">ModelDock 原型 v0.2 · 对应设计稿 DESIGN.md §4/§5 · 本页数据均为示例 · 聊天部署 + HF/魔搭双源已纳入</div>
+</div>
+
+<script>
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+  document.querySelectorAll(".page").forEach(x => x.classList.remove("active"));
+  t.classList.add("active");
+  document.getElementById(t.dataset.p).classList.add("active");
+}));
+</script>
+</body>
+</html>

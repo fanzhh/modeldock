@@ -1,0 +1,20 @@
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: modeldock/server:0.1
+    container_name: modeldock-server
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8820:8820"
+    volumes:
+      - modeldock-data:/data
+    environment:
+      MODELDOCK_DATA_DIR: /data
+      MODELDOCK_HOST: 0.0.0.0        # 容器内全接口；宿主机仅绑定 127.0.0.1
+      MODELDOCK_PORT: "8820"
+    # rclone 已打进镜像；如需复用宿主机配置改挂 /data/rclone.conf
+
+volumes:
+  modeldock-data:
