@@ -188,11 +188,12 @@ def test_drive_import_missing_source(client, tmp_path):
 
 def test_oauth_start_and_callback(client, tmp_path, monkeypatch):
     start = client.post("/api/accounts/drive/oauth/start",
-                         json={"client_id": "cid.apps.googleusercontent.com", "client_secret": "cs"})
+                         json={"client_id": "cid.apps.googleusercontent.com", "client_secret": "cs"},
+                         headers={"host": "127.0.0.1:8820"})  # 网页发起：回调随浏览器地址
     assert start.status_code == 200
     body = start.json()
     assert "accounts.google.com" in body["authorize_url"]
-    assert "127.0.0.1" in body["redirect_uri"]
+    assert body["redirect_uri"] == "http://127.0.0.1:8820/api/accounts/drive/oauth/callback"
     state = body["state"]
 
     # 回调：mock token 交换 + 临时 vault（不触真实 ~/.modeldock）

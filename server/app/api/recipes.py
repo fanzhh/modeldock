@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -126,3 +127,29 @@ def deployment_notebook(dep_id: int):
 def colab_usage():
     """compute units 余额（经当前后端；mock 返回占位）。"""
     return get_orchestrator().backend.usage()
+
+
+# ---- Colab 网页登录（无头 OAuth 转接；凭证由 colab CLI 自管） ----
+
+@router.post("/colab/auth/start")
+def colab_auth_start():
+    """起 CLI 授权进程并返回授权 URL；已登录则直接返回余额输出。"""
+    from app.core.colab.auth import ColabAuthError, get_auth_manager
+    try:
+        return get_auth_manager().start()
+    except ColabAuthError as e:
+        raise HTTPException(422, str(e)) from e
+
+
+class ColabAuthCodeIn(BaseModel):
+    code: str = Field(min_length=1, max_length=4096)
+
+
+@router.post("/colab/auth/submit")
+def colab_auth_submit(body: ColabAuthCodeIn):
+    """把浏览器回调码写回 CLI 进程，完成登录。"""
+    from app.core.colab.auth import ColabAuthError, get_auth_manager
+    try:
+        return get_auth_manager().submit(body.code)
+    except ColabAuthError as e:
+        raise HTTPException(409, str(e)) from e

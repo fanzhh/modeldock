@@ -71,3 +71,8 @@ button.chip.on { color: var(--fg); border-color: var(--primary); }
        white-space: pre-wrap; word-break: break-word; }
 .msg.user { background: #223354; align-self: flex-end; max-width: 85%; }
 .msg.bot { background: #1a2030; align-self: flex-start; max-width: 85%; }
+
+.block { margin-top: 12px; }
+details summary { cursor: pointer; color: var(--primary); font-size: 13px; margin-bottom: 8px; }
+a { color: var(--primary); word-break: break-all; }
+section pre a, .block pre { margin: 6px 0; }

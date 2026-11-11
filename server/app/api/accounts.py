@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -129,14 +129,30 @@ def drive_import(body: dict):
             "health": _drive().health()}
 
 
+def _request_base(request: Request) -> str:
+    """网页发起 OAuth 时：回调地址必须与浏览器地址同源，
+    否则 Google 会把用户重定向到错误的机器（本地优先设计 + 服务器部署都要覆盖）。
+    tailscale serve / 反向代理场景用 X-Forwarded-Proto（https）。"""
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme or "http"
+    host = request.headers.get("host") or str(request.url)
+    host = host.split("@")[-1]
+    return f"{proto}://{host}"
+
+
 @router.post("/drive/oauth/start")
-def oauth_start(body: OAuthStartIn):
-    """开始 OAuth：返回授权 URL。client_secret 即时存 vault，不返回。"""
-    sess = new_session(body.client_id, body.client_secret,
-                       f"http://127.0.0.1:{settings.port}/api/accounts/drive/oauth/callback")
+def oauth_start(body: OAuthStartIn, request: Request):
+    """开始 OAuth：返回授权 URL。client_secret 即时存 vault，不返回。
+
+    redirect_uri 按浏览器访问地址动态生成；用户需在 Google Cloud Console 的
+    OAuth 客户端里注册该地址（响应中给出，供照抄）。
+    """
+    redirect_uri = f"{_request_base(request)}/api/accounts/drive/oauth/callback"
+    sess = new_session(body.client_id, body.client_secret, redirect_uri)
     _pending_oauth[sess.state] = sess
     return {"authorize_url": authorize_url(sess), "state": sess.state,
             "redirect_uri": sess.redirect_uri,
+            "setup_hint": "请确认 Google Cloud Console 中该 OAuth 客户端已注册 "
+                          "redirect URI（Web 应用类型需 HTTPS，loopback 例外）",
             "hint": "在浏览器打开 URL 完成授权；回调由本服务自动处理"}
 
 

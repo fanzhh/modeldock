@@ -13,6 +13,18 @@ export const api = {
   putSecret: (body) => fetch("/api/accounts/secrets", {
     method: "PUT", headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body) }).then(j),
+  driveImport: () => fetch("/api/accounts/drive/import", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: "{}" }).then(j),
+  driveOauthStart: (body) => fetch("/api/accounts/drive/oauth/start", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body) }).then(j),
+
+  // colab login (headless OAuth relay)
+  colabAuthStart: () => fetch("/api/colab/auth/start", { method: "POST" }).then(j),
+  colabAuthSubmit: (code) => fetch("/api/colab/auth/submit", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }) }).then(j),
 
   // models
   families: () => fetch("/api/models/families").then(j),

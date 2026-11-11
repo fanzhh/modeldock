@@ -38,7 +38,7 @@
 # 1. 后端（默认监听 127.0.0.1:8820，数据目录 ~/.modeldock）
 cd server
 uv sync
-uv run pytest                 # 54 个测试
+uv run pytest                 # 62 个测试
 uv run python -m uvicorn app.main:app --port 8820
 
 # 2. 前端控制台（开发调试）
@@ -66,32 +66,30 @@ curl -X POST localhost:8820/api/models/tasks -H 'Content-Type: application/json'
 curl localhost:8820/api/health
 ```
 
-## M1：连接 Google Drive（两条路）
+## M1：连接 Google Drive（网页上即可完成）
 
-先看状态（自动探测本机 `~/.config/rclone/rclone.conf` 里已有的 drive remote）：
+打开控制台「总览」页：检测到本机已有 rclone remote 时点**一键导入**；
+没有则在 Drive 卡片的 OAuth 向导里填 Google Cloud Console 的 client_id/secret，
+按页面给出的 redirect_uri 到 Console 注册（Web 应用需 HTTPS；loopback 例外），
+打开授权链接批准即可——回调随浏览器访问地址动态生成，
+本机（127.0.0.1）和服务器部署（Tailscale 域名）都支持。
+
+服务器上建议 `tailscale serve --bg 8820` 获得 HTTPS，如
+`https://<host>.<tailnet>.ts.net/api/accounts/drive/oauth/callback`。
+
+「登录 Colab」同样在总览页点按钮完成：网页展示授权链接 → 浏览器批准 →
+授权码粘回网页（凭证由 colab CLI 自管，授权码只在内存转交）。
+
+以下为等价的 API 操作：
 
 ```bash
 curl localhost:8820/api/accounts/drive/status
-```
-
-**路 A — 导入已有 rclone remote**（本机已在用 rclone 的话最快）：
-
-```bash
 curl -X POST localhost:8820/api/accounts/drive/import \
-  -H 'Content-Type: application/json' \
-  -d '{"remote_name":"gdrive"}'     # 复制进托管配置 ~/.modeldock/rclone.conf（0600）
-```
-
-**路 B — OAuth 向导**：需先在 Google Cloud Console 建 OAuth 客户端
-（类型「桌面应用」），重定向 URI 填 `http://127.0.0.1:8820/api/accounts/drive/oauth/callback`：
-
-```bash
-# 1. 发起（client_secret 即时入 vault，不回显）
+  -H 'Content-Type: application/json' -d '{"remote_name":"gdrive"}'
 curl -X POST localhost:8820/api/accounts/drive/oauth/start \
   -H 'Content-Type: application/json' \
   -d '{"client_id":"xxx.apps.googleusercontent.com","client_secret":"GOCSPX-xxx"}'
-# 2. 浏览器打开返回的 authorize_url 授权；回调自动完成
-#    token 交换 → vault 密封 → 注册托管 remote `gdrive`
+# 浏览器打开返回的 authorize_url 授权；回调自动完成
 ```
 
 连好后检查健康与配额：
@@ -198,7 +196,7 @@ modeldock/
 │   │   ├── config.py       环境变量 MODELDOCK_*
 │   │   ├── db.py           SQLAlchemy 模型
 │   │   └── main.py         入口 + lifespan
-│   └── tests/              54 个单元/集成测试
+│   └── tests/              62 个单元/集成测试
 ├── web/                    Vite React 控制台骨架
 └── docker-compose.yml      本地编排（含 rclone 的 server 容器）
 ```
