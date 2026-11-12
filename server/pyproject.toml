@@ -12,6 +12,9 @@ dependencies = [
     "cryptography>=43",
     # Colab 会话通道随包提供：网页「登录 Colab/Open Tunnel」不需要用户预装 CLI
     "google-colab-cli>=0.7",
+    # Linux 服务器无 SecretService/keyring backend 时 CLI 存不下 token；
+    # 提供 plaintext 文件 backend（配合 PYTHON_KEYRING_BACKEND，见 start.sh）
+    "keyrings.alt>=5",
 ]
 
 [dependency-groups]
