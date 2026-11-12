@@ -60,7 +60,21 @@ function DriveCard({ drive }) {
         <>
           托管 remote <b>{d.managed_remote}</b>：
           {registered
-            ? <b>已注册 ✅ {d.health?.ok ? "" : "（健康检查未过）"}</b>
+            ? (d.health?.ok
+                ? <b>已注册 ✅</b>
+                : <span>
+                    <b>已注册 ⚠️ 健康检查未过</b>
+                    <div className="block">
+                      <pre className="dim">{d.health?.detail || "unknown error"}</pre>
+                      <p className="dim">
+                        常见原因：授权时 Google 未签发 refresh_token（旧授权未撤销时不会重复签发）。
+                        到{" "}
+                        <a href="https://myaccount.google.com/permissions"
+                           target="_blank" rel="noreferrer">Google 账号 → 第三方访问</a>{" "}
+                        撤销 ModelDock 的授权，然后断开重新走一遍向导（页面会带 prompt=consent）。
+                      </p>
+                    </div>
+                  </span>)
             : <b>未连接</b>}
           {d.importable?.length > 0 && (
             <div className="block">
@@ -72,10 +86,16 @@ function DriveCard({ drive }) {
               </button>
             </div>
           )}
-          {!registered && (
+          {(!registered || d.health?.ok === false) && (
             <div className="block">
               <h3>连接向导（Google Cloud Console OAuth）</h3>
               <ol className="steps">
+                <li className="dim">
+                  若之前授权失败或重复授权过：先到{" "}
+                  <a href="https://myaccount.google.com/permissions"
+                     target="_blank" rel="noreferrer">Google 账号 → 第三方访问</a>{" "}
+                  撤销本应用授权（否则 Google 不再签发 refresh_token，连接会失败）
+                </li>
                 <li>
                   打开{" "}
                   <a href="https://console.cloud.google.com/apis/credentials"

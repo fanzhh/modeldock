@@ -230,3 +230,35 @@ def test_oauth_start_and_callback(client, tmp_path, monkeypatch):
 def test_oauth_start_validation(client):
     r = client.post("/api/accounts/drive/oauth/start", json={"client_id": "cid"})
     assert r.status_code == 422
+
+
+def test_oauth_callback_verify_failure_rolls_back(client, tmp_path, monkeypatch):
+    """回调后即时验证失败（如缺 refresh_token 的僵尸授权）：回滚托管段并给可行动 hint。"""
+    import app.api.accounts as acc
+
+    start = client.post("/api/accounts/drive/oauth/start",
+                         json={"client_id": "cid.apps.googleusercontent.com", "client_secret": "cs"},
+                         headers={"host": "127.0.0.1:8820"})
+    state = start.json()["state"]
+
+    monkeypatch.setattr(acc, "exchange_code",
+                        lambda sess, code: {"access_token": "at", "refresh_token": "rt", "expires_in": 3600})
+    monkeypatch.setattr(acc, "vault", Vault(key_path=tmp_path / "vault.key"))
+
+    # health 恒失败的 Drive：模拟 rclone 报 token expired / no refresh token
+    class _BrokenDrive(Drive):
+        def health(self):
+            return {"ok": False, "detail": "token expired and there's no refresh token"}
+
+    managed = _managed_conf(tmp_path)
+    monkeypatch.setattr(acc, "_drive", lambda: _BrokenDrive(config_path=str(managed)))
+
+    cb = client.get(f"/api/accounts/drive/oauth/callback?code=x&state={state}")
+    out = cb.json()
+    assert out["ok"] is False and out["stage"] == "verify"
+    assert "refresh_token" in out["hint"]
+    # 托管段已回滚：不留看似注册实则不可用的 remote
+    parser = configparser.ConfigParser()
+    parser.read(managed)
+    assert not parser.has_section("gdrive")
+    assert os.stat(managed).st_mode & 0o777 == 0o600

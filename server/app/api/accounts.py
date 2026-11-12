@@ -1,6 +1,7 @@
 """凭证 API：只写不读。GET 只返回指纹元数据。Drive 注册三通道：导入 / OAuth / 状态。"""
 from __future__ import annotations
 
+import configparser
 import os
 
 from fastapi import APIRouter, HTTPException, Request
@@ -158,7 +159,8 @@ def oauth_start(body: OAuthStartIn, request: Request):
 
 @router.get("/drive/oauth/callback")
 def oauth_callback(code: str = "", state: str = "", error: str = ""):
-    """浏览器回调：校验 state → 交换 token → 存 vault → 注册 rclone remote。"""
+    """浏览器回调：校验 state → 交换 token → 存 vault → 注册 rclone remote →
+    立即连通性验证（fail 即回滚并回报明细，避免留下看似注册实则不可用的段）。"""
     if error:
         return {"ok": False, "stage": "google", "detail": error}
     sess = _pending_oauth.pop(state, None)
@@ -171,9 +173,24 @@ def oauth_callback(code: str = "", state: str = "", error: str = ""):
     # 客户端凭证与 refresh_token 入 vault；rclone.conf（0600）持有运行所需副本
     vault.put("google", "drive-refresh", tokens["refresh_token"])
     vault.put("google", "drive-client", sess.client_secret)
-    _drive().register_refresh_token(sess.client_id, sess.client_secret, tokens["refresh_token"])
+    d = _drive()
+    d.register_refresh_token(sess.client_id, sess.client_secret, tokens["refresh_token"])
+    health = d.health()
+    if not health.get("ok"):
+        # 验证失败：不留死段（否则 status 常年"注册但健康未过"）
+        parser = configparser.ConfigParser()
+        parser.read(d.config_path)
+        parser.remove_section(d.remote)
+        with open(d.config_path, "w") as f:
+            parser.write(f)
+        os.chmod(d.config_path, 0o600)
+        return {"ok": False, "stage": "verify",
+                "detail": str(health.get("detail", ""))[:300],
+                "hint": "多数是旧授权未撤销导致 Google 未发 refresh_token：到 "
+                        "https://myaccount.google.com/permissions 撤销本应用的授权，"
+                        "然后重新发起（页面自带 prompt=consent）"}
     return {"ok": True, "stage": "done",
-            "health": _drive().health(),
+            "health": health,
             "note": "managed remote ready; client secret/refresh token sealed in vault"}
 
 
