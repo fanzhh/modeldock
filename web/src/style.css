@@ -86,3 +86,8 @@ textarea { font-family: inherit; }
 .thumb figcaption { color: var(--muted); margin-top: 4px; overflow: hidden;
                     text-overflow: ellipsis; white-space: nowrap; }
 button.mini { background: #3a2530; padding: 2px 8px; font-size: 11px; margin-left: 6px; }
+
+/* 连接向导 */
+section h3 { font-size: 13px; margin: 10px 0 6px; color: var(--primary); }
+ol.steps { margin: 6px 0; padding-left: 18px; font-size: 13px; line-height: 1.9; }
+code { background: #0e1218; padding: 1px 6px; border-radius: 6px; font-size: 12px; }

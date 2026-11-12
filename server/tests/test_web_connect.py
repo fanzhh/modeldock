@@ -157,3 +157,16 @@ def test_finished_session_auto_reaped(tmp_path):
     assert mg.start()["auth_required"] is False  # 进程立即退出并输出余额
     out2 = mg.start()                            # 旧会话已退出 → 自动回收
     assert out2["auth_required"] is False
+
+
+def test_probe_usage_logged_in(tmp_path):
+    mg = ColabAuthManager(colab_bin=_fake_colab(tmp_path, "already"))
+    out = mg.probe_usage()
+    assert out["logged_in"] is True and "compute units" in out["usage"]
+
+
+def test_probe_usage_not_logged_in(tmp_path):
+    """未登录 CLI 会打印授权 URL 等 stdin → 超时即未登录（不入死等）。"""
+    mg = ColabAuthManager(colab_bin=_fake_colab(tmp_path, "oauth"))
+    out = mg.probe_usage(timeout=3)
+    assert out["logged_in"] is False

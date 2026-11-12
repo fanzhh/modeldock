@@ -201,6 +201,13 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr("app.api.accounts._drive",
                         lambda: Drive(config_path=str(tmp_path / "rclone.conf"),
                                       rclone_bin=str(fake_bin)))
+    # colab usage 探测走 fake CLI（已登录模式，避免真实 CLI 10s 超时）
+    fake_colab = tmp_path / "colab-fake"
+    fake_colab.write_text("#!/bin/sh\necho 'compute units: 42.0'\nexit 0\n")
+    import stat as _stat
+    fake_colab.chmod(fake_colab.stat().st_mode | _stat.S_IEXEC)
+    from app.core.colab.auth import ColabAuthManager, set_auth_manager
+    set_auth_manager(ColabAuthManager(colab_bin=str(fake_colab)))
     set_orchestrator(Orchestrator(backend=MockColabBackend()))
     with TestClient(app) as c:
         yield c
@@ -217,7 +224,7 @@ def test_deployment_start_and_logs_api(client, tmp_path):
     assert client.get(f"/api/deployments/{dep_id}").json()["state"] == "ready"
 
     usage = client.get("/api/colab/usage").json()
-    assert "compute_units" in usage
+    assert usage["logged_in"] is True and "compute units" in usage["usage"]
 
 
 def test_notebook_endpoint(client, tmp_path):

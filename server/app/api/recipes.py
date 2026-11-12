@@ -125,8 +125,9 @@ def deployment_notebook(dep_id: int):
 
 @router.get("/colab/usage")
 def colab_usage():
-    """compute units 余额（经当前后端；mock 返回占位）。"""
-    return get_orchestrator().backend.usage()
+    """Colab 登录态 + compute units 余额（真实 CLI 探测；未登录 → logged_in=false）。"""
+    from app.core.colab.auth import get_auth_manager
+    return get_auth_manager().probe_usage()
 
 
 # ---- SSH 隧道（网页一键开通，替代手动 ssh -L + 登记端点） ----

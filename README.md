@@ -38,7 +38,7 @@
 # 1. 后端（默认监听 127.0.0.1:8820，数据目录 ~/.modeldock）
 cd server
 uv sync
-uv run pytest                 # 77 个测试
+uv run pytest                 # 79 个测试
 uv run python -m uvicorn app.main:app --port 8820
 
 # 2. 前端控制台（开发调试）
@@ -224,7 +224,7 @@ modeldock/
 │   │   ├── config.py       环境变量 MODELDOCK_*
 │   │   ├── db.py           SQLAlchemy 模型
 │   │   └── main.py         入口 + lifespan
-│   └── tests/              77 个单元/集成测试
+│   └── tests/              79 个单元/集成测试
 ├── web/                    Vite React 控制台骨架
 └── docker-compose.yml      本地编排（含 rclone 的 server 容器）
 ```

@@ -52,14 +52,16 @@ function DriveCard({ drive }) {
   };
 
   const d = drive?.ok ? drive.v : null;
+  const registered = !!d?.registered;
   return (
     <Card title="Google Drive">
       {drive?.ok === false && <p className="dim">—</p>}
       {d && (
         <>
-          托管 remote <b>{d.managed_remote}</b>：{d.registered
+          托管 remote <b>{d.managed_remote}</b>：
+          {registered
             ? <b>已注册 ✅ {d.health?.ok ? "" : "（健康检查未过）"}</b>
-            : "未注册"}
+            : <b>未连接</b>}
           {d.importable?.length > 0 && (
             <div className="block">
               <p className="dim">
@@ -70,9 +72,23 @@ function DriveCard({ drive }) {
               </button>
             </div>
           )}
-          {!d.registered && (
-            <details className="block">
-              <summary>没有现成 remote？用 OAuth 向导（需 Google Cloud Console 的 OAuth 客户端）</summary>
+          {!registered && (
+            <div className="block">
+              <h3>连接向导（Google Cloud Console OAuth）</h3>
+              <ol className="steps">
+                <li>
+                  打开{" "}
+                  <a href="https://console.cloud.google.com/apis/credentials"
+                     target="_blank" rel="noreferrer">Google Cloud Console → 凭据</a>{" "}
+                  → 「创建凭据 → OAuth 客户端 ID」，类型选 <b>Web 应用</b>
+                </li>
+                <li>
+                  点「开始授权」→ 本页会显示你环境的<b>准确 redirect URI</b>，
+                  复制到 Console 的「已获授权的重定向 URI」保存
+                </li>
+                <li>把生成的 client_id / client_secret 填进下面，点「开始授权」</li>
+                <li>打开授权链接、批准权限——成功后本卡片自动变为已注册</li>
+              </ol>
               <form onSubmit={startOauth} className="grid">
                 <input placeholder="client_id（…apps.googleusercontent.com）"
                        value={form.client_id}
@@ -86,14 +102,14 @@ function DriveCard({ drive }) {
               </form>
               {oauth && (
                 <div className="block">
-                  <p>① 把下面的 redirect URI 加进 Google Cloud Console 的 OAuth 客户端（Web 应用需 HTTPS）：</p>
-                  <pre>{oauth.redirect_uri}</pre>
-                  <p>② 浏览器打开授权链接、批准权限：</p>
+                  <p>① 把下面的 redirect URI 加进 Console 的 OAuth 客户端（Web 应用需 HTTPS）；「authorized origins」可留空：</p>
+                  <pre><input readOnly value={oauth.redirect_uri} onFocus={(ev) => ev.target.select()} /></pre>
+                  <p>② 浏览器打开授权链接、批准权限（多账号注意选对账号）：</p>
                   <p><a href={oauth.authorize_url} target="_blank" rel="noreferrer">{oauth.authorize_url}</a></p>
                   <p className="dim">授权后 Google 会跳回本站自动完成注册。</p>
                 </div>
               )}
-            </details>
+            </div>
           )}
           {err && <ErrBox text={err} />}
         </>
@@ -105,13 +121,17 @@ function DriveCard({ drive }) {
 function ColabCard({ usage }) {
   const [flow, setFlow] = useState(null);    // start 响应
   const [code, setCode] = useState("");
+  const [done, setDone] = useState(null);     // {output} 登录成功
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState("");
 
+  const loggedIn = usage?.ok && usage.v?.logged_in;
+
   const start = async () => {
-    setErr(""); setCode(""); setBusy("start"); setFlow(null);
+    setErr(""); setCode(""); setDone(null); setBusy("start"); setFlow(null);
     try {
-      setFlow(await api.colabAuthStart());
+      const r = await api.colabAuthStart();
+      if (r.auth_required) setFlow(r); else setDone({ output: r.usage, already: true });
     } catch (e) {
       if (/进行中/.test(e.message)) {
         // 旧会话悬挂 → 自动放弃重开（单按钮自愈）
@@ -122,30 +142,31 @@ function ColabCard({ usage }) {
     }
     setBusy("");
   };
-  const restart = async () => {
-    setErr(""); setFlow(null); setCode("");
-    await api.colabAuthCancel().catch(() => {});
-    await start();
-  };
   const submit = async (e) => {
     e.preventDefault(); setErr(""); setBusy("submit");
     try {
       const r = await api.colabAuthSubmit(code);
-      if (r.ok === false) setErr(`CLI 返回失败：${r.output || ""}`.slice(0, 300));
-      setFlow(null);
+      if (r.ok === false) { setErr(`登录失败：${r.output || ""}`.slice(0, 300)); }
+      else { setFlow(null); setDone({ output: r.output, already: false }); }
     } catch (e2) { setErr(e2.message); }
     setBusy("");
   };
 
   return (
     <Card title="Colab（计算额度）">
-      {usage?.ok && <pre>{JSON.stringify(usage.v, null, 2)}</pre>}
-      {!usage?.ok && <p className="dim">CLI 未登录或后端为 mock</p>}
-      {!flow ? (
-        <button disabled={!!busy} onClick={start}>
-          {busy === "start" ? "启动授权…" : "登录 Colab（浏览器授权）"}
-        </button>
-      ) : flow.auth_required ? (
+      {(loggedIn || done) && (
+        <div className="block">
+          <p>✅ <b>已登录</b>（colab CLI 已存好凭证）</p>
+          {done && <pre>{done.output || usage?.v?.usage || ""}</pre>}
+          {!done && usage?.v?.usage && <pre>{usage.v.usage}</pre>}
+        </div>
+      )}
+      {(!loggedIn && !done) && (
+        (usage?.ok && !usage.v.logged_in)
+          ? <p className="dim">CLI 未登录——Colab 部署与隧道需要先完成一次浏览器授权</p>
+          : usage?.ok === false ? <p className="dim">{usage.e}</p> : ""
+      )}
+      {flow?.auth_required ? (
         <div className="block">
           <p>① 浏览器打开链接、在 Google 账户上批准 Colab CLI：</p>
           <p><a href={flow.url} target="_blank" rel="noreferrer">{flow.url}</a></p>
@@ -156,14 +177,16 @@ function ColabCard({ usage }) {
             <button disabled={!!busy} type="submit">
               {busy === "submit" ? "提交中…" : "提交"}
             </button>
-            <button type="button" disabled={!!busy} onClick={restart}>放弃并重开</button>
+            <button type="button" disabled={!!busy} onClick={async () => {
+              await api.colabAuthCancel().catch(() => {});
+              setFlow(null);
+            }}>放弃</button>
           </form>
         </div>
       ) : (
-        <div className="block">
-          <p className="dim">已登录，余额输出：</p>
-          <pre>{flow.usage || ""}</pre>
-        </div>
+        <button disabled={!!busy} onClick={start}>
+          {busy === "start" ? "启动授权…" : (loggedIn ? "重新检测登录" : "登录 Colab（浏览器授权）")}
+        </button>
       )}
       {err && <ErrBox text={err} />}
     </Card>

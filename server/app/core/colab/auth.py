@@ -123,6 +123,26 @@ class ColabAuthManager:
         ok = rc == 0 and "Error" not in s.output and "error" not in s.output
         return {"ok": ok, "rc": rc, "output": s.output[-600:]}
 
+    def probe_usage(self, timeout: float = 10.0) -> dict:
+        """真实 CLI 探测（短超时）：登录态 + 余额输出。
+
+        未登录时 `colab usage` 会打印授权 URL 等 stdin——超时即视为未登录，
+        绝不读取其输出为凭证（URL 无凭证，仅授权链接）。
+        """
+        try:
+            proc = subprocess.run(
+                [self.bin, "usage"], capture_output=True, text=True,
+                timeout=timeout, stdin=subprocess.DEVNULL)
+        except subprocess.TimeoutExpired:
+            return {"logged_in": False, "detail": "未登录或 CLI 不可用"}
+        if proc.returncode != 0:
+            return {"logged_in": False, "detail": f"rc={proc.returncode}"}
+        text = (proc.stdout or "").strip()
+        if "Google will display an authorization code" in (proc.stdout or "") \
+                or "To authorize colab-cli" in (proc.stdout or ""):
+            return {"logged_in": False, "detail": "未登录"}
+        return {"logged_in": True, "usage": text[-400:]}
+
 
 def _find_colab() -> str:
     """优先 server venv 内置 CLI（随包依赖安装），其次独立 uv tool 安装。"""
